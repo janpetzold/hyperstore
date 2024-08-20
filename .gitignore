@@ -1,0 +1,11 @@
+hyperstore-api/.phpunit.cache
+hyperstore-api/node_modules
+hyperstore-api/public/build
+hyperstore-api/public/hot
+hyperstore-api/public/storage
+hyperstore-api/storage/*.key
+hyperstore-api/vendor
+hyperstore-api/.env
+hyperstore-api/.phpunit.result.cache
+/.vscode
+
