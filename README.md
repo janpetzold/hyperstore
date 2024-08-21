@@ -21,7 +21,7 @@ This will take a while and shall give you a subdirectory hyperstore-api. Now do 
 
 ## Code
 
-The controller was built via
+The controller was initiated via
 
     php artisan make:controller HyperController
 
@@ -40,7 +40,7 @@ The `Dockerfile`is prepared and an image can be created via
 
 Run this through
 
-    docker run -p 8000:80 --name hyperstore -v $(pwd):/var/www/html -e APP_ENV=production -e APP_DEBUG=false -e LOG_LEVEL=error hyperstore
+    docker run -p 80:80 --name hyperstore hyperstore
 
 Trace logs via
 
@@ -91,9 +91,17 @@ ECS task execution is enabled so if you need to SSH into the container do
 
     aws ecs execute-command --cluster hyperstore-cluster --task b12aef02a7a84346bff48ab6487a4ef7 --container hyperstore-app --interactive --command "/bin/bash"
 
+## Deploy
+
+To re-deploy the service with a new image uploaded to ECR just do
+
+    aws ecs update-service --cluster hyperstore-cluster --service hyperstore-service --force-new-deployment
+
 
 ## Known issues
 
 - Request handling takes very long in local environment (2-5s). How to fix that?
 - .env file is part of Docker image. Seems to be needed for the app key. Challenge that.
 - Move Dockerfile out of api dir
+- add php-fpm and a "real" web server but make it work in the Docker container
+- session variable does not seem to work
