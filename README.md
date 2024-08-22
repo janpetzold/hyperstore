@@ -91,12 +91,23 @@ ECS task execution is enabled so if you need to SSH into the container do
 
     aws ecs execute-command --cluster hyperstore-cluster --task b12aef02a7a84346bff48ab6487a4ef7 --container hyperstore-app --interactive --command "/bin/bash"
 
+To find out the IP address of the recent task deployment do this - unfortunately this requires 3 steps
+
+    # Get ARN for the latest taks
+    aws ecs list-tasks --cluster hyperstore-cluster
+    
+    # Extract network interface ID
+    aws ecs describe-tasks --cluster hyperstore-cluster --tasks d332c5e7942a43a2a437c15138b278e8 | grep eni
+    
+    # Take the network interface ID to get the public IP of the service
+    aws ec2 describe-network-interfaces --network-interface-ids eni-0f842741f2c157970 | grep PublicIp
+
+
 ## Deploy
 
 To re-deploy the service with a new image uploaded to ECR just do
 
     aws ecs update-service --cluster hyperstore-cluster --service hyperstore-service --force-new-deployment
-
 
 ## Known issues
 
@@ -104,4 +115,5 @@ To re-deploy the service with a new image uploaded to ECR just do
 - .env file is part of Docker image. Seems to be needed for the app key. Challenge that.
 - Move Dockerfile out of api dir
 - add php-fpm and a "real" web server but make it work in the Docker container
-- session variable does not seem to work
+- add resource groups in terraform
+- add load balancer to have a static IP
