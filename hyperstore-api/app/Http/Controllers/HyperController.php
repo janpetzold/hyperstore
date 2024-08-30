@@ -7,13 +7,6 @@ use Illuminate\Routing\Controller as BaseController;
 
 class HyperController extends BaseController {
 
-    // Ensure the session is started since we need session to store any kind of state here
-    public function __construct() {
-        if (session_status() == PHP_SESSION_NONE) {
-            session_start();
-        }
-    }
-
     // GET /hyper
     public function getHyper() {
         $quantity = session('quantity', 0);

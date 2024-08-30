@@ -11,6 +11,7 @@ This project is based on Laravel. To get started do a
 
 To setup the project do
 
+    composer install
     composer create-project laravel/laravel hyperstore-api
 
 This will take a while and shall give you a subdirectory hyperstore-api. Now do this to start the service:
@@ -78,7 +79,13 @@ SSH into the container
 
 ## IaC
 
-First install Terraform following the [instructions](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli). Then do
+First install Terraform following the [instructions](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli). 
+
+Terraform needs aws credentials. The best way to set this up is via AWS CLI.
+
+    brew install awscli
+
+Then do
 
     terraform init
     terraform apply
@@ -102,6 +109,54 @@ To find out the IP address of the recent task deployment do this - unfortunately
     # Take the network interface ID to get the public IP of the service
     aws ec2 describe-network-interfaces --network-interface-ids eni-0f842741f2c157970 | grep PublicIp
 
+## Database
+
+We use Redis both for logging activity and the actual "data" that is being processed. For now there is just a single DB instance in eu-central-1 that covers all global services.
+
+The Redis DB is set up vi terraform just like all other resources. Publi internet access is not possible, therefore a Bastion jumphost is also set up. To connect to it run
+
+    terraform output
+
+and check the `ssh` command there. This tunnel can also be setup in [Medis](https://getmedis.com/) client.
+
+To use this with `redis-cli` locally port forwarding needs to be enabled. To do this run
+
+    ssh -i bastion_ssh_key.pem -L 6379:eu-redis-cluster.jks2ei.0001.euc1.cache.amazonaws.com:6379 ec2-user@3.72.75.155
+
+Replace Bastion host IP address and Cluster URL accordingly. Leave this command open. Now in another terminal just run
+
+    redis-cli
+
+where you can interact with the remote database.
+
+## Debugging
+
+Prepare debugging via
+
+    pecl install xdebug
+
+I had a .vscode/launch.json with the following content:
+
+    {
+        "version": "0.2.0",
+        "configurations": [
+        {
+            "name": "Listen for Xdebug",
+                "type": "php",
+            "request": "launch",
+            "port": 9003
+        }
+        ]
+    }
+
+And I needed to update php.ini for debugging to work:
+
+    xdebug.mode = debug
+    xdebug.start_with_request = yes
+    xdebug.client_port = 9003
+    xdebug.client_host = "127.0.0.1"
+
+Then just start "Listen for XDebug" in VSCode Run & Debug menu. Install the PHPUnit and PHP Debug extensions beforehand.
 
 ## Deploy
 

@@ -1,3 +1,4 @@
+.DS_Store
 hyperstore-api/.phpunit.cache
 hyperstore-api/node_modules
 hyperstore-api/public/build
@@ -14,9 +15,8 @@ terraform/global/.terraform*
 terraform/global/terraform*
 terraform/eu-central-1/.terraform*
 terraform/eu-central-1/terraform*
+terraform/eu-central-1/bastion*.pem
 terraform/us-east-1/.terraform*
 terraform/us-east-1/terraform*
 terraform/sa-east-1/.terraform*
 terraform/sa-east-1/terraform*
-/.vscode
-
