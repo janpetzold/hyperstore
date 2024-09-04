@@ -186,11 +186,13 @@ To re-deploy the service with a new image uploaded to ECR just do
 
     aws ecs update-service --cluster hyperstore-cluster --service hyperstore-service --force-new-deployment
 
-## Known issues
+## Todos & Known issues
 
-- Request handling takes very long in local environment (2-5s). How to fix that?
-- .env file is part of Docker image. Seems to be needed for the app key. Challenge that.
+- .env file is part of Docker image. Seems to be needed for the app key. Remove .env from docker build and externalize these variables via AWS Systems Manager Parameter Store for sake of pricing / simplicity
 - Move Dockerfile out of api dir
 - add php-fpm and a "real" web server but make it work in the Docker container
 - add resource groups in terraform
 - add load balancer to have a static IP
+- setup real domain "hyperstore.cc" and link to EU/NAR/SA
+- setup TLS
+- start client setup with 5 clients from EU via AMI predefined based on Locust
