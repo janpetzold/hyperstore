@@ -9,6 +9,11 @@ This project is based on Laravel. To get started do a
     sudo apt install php php-xml php-curl
     sudo apt install composer
 
+Make sure that PHP fileinfo and Redis extension are enabled in `php.ini`:
+
+    extension=fileinfo
+    extension=php_redis.dll
+
 To setup the project do
 
     composer install
@@ -111,7 +116,22 @@ To find out the IP address of the recent task deployment do this - unfortunately
 
 ## Database
 
-We use Redis both for logging activity and the actual "data" that is being processed. For now there is just a single DB instance in eu-central-1 that covers all global services.
+We use Redis both for logging activity and the actual "data" that is being processed. 
+
+### Localhost
+
+For local development it is easiest to just install Redis via Linux/WSL
+
+    sudo apt-get install redis-server
+    sudo service redis-server start
+
+    # Test via
+    redis-cli
+    ping
+
+### Server
+
+For now there is just a single DB instance in eu-central-1 that covers all global services.
 
 The Redis DB is set up vi terraform just like all other resources. Publi internet access is not possible, therefore a Bastion jumphost is also set up. To connect to it run
 
@@ -135,6 +155,8 @@ Prepare debugging via
 
     pecl install xdebug
 
+Also/alternatively check the guidelines from https://xdebug.org/wizard
+
 I had a .vscode/launch.json with the following content:
 
     {
@@ -149,7 +171,7 @@ I had a .vscode/launch.json with the following content:
         ]
     }
 
-And I needed to update php.ini for debugging to work:
+And I needed to update php.ini for debugging to work (place this right at the beginning):
 
     xdebug.mode = debug
     xdebug.start_with_request = yes

@@ -5,11 +5,19 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller as BaseController;
 
+use App\Services\InventoryService;
+
 class HyperController extends BaseController {
+
+    private $inventoryService;
+
+    public function __construct(InventoryService $inventoryService) {
+        $this->inventoryService = $inventoryService;
+    }
 
     // GET /hyper
     public function getHyper() {
-        $quantity = session('quantity', 0);
+        $quantity = $this->inventoryService->getInventory();
         return response()->json(['quantity' => $quantity]);
     }
 
@@ -19,19 +27,19 @@ class HyperController extends BaseController {
             'quantity' => 'required|integer|min:0',
         ]);
 
-        session(['quantity' => $request->input('quantity')]);
-        $quantity = session('quantity');
+        $quantity = $request->input('quantity');
+        $this->inventoryService->setInventory($quantity);
 
         return response()->json(['message' => "Quantity set successfully to $quantity Hyper"]);
     }
 
     // PUT /hyper/own
     public function ownHyper() {
-        $quantity = session('quantity', 0);
+        $quantity = $this->inventoryService->getInventory();
 
         if ($quantity > 0) {
             $quantity--;
-            session(['quantity' => $quantity]);
+            $this->inventoryService->decrementInventory();
             return response()->json(['message' => 'Hyper acquired successfully']);
         }
         return response()->json(['message' => 'No Hyper available for you'], 404);
