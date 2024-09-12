@@ -1,4 +1,4 @@
-# Variable for defining the resion we want to deploy to - we have three currently: EU, NA, SA
+# Variable for defining the region we want to deploy to - we have three currently: EU, NA, SA
 variable "region" {
   description = "AWS region"
   type        = string

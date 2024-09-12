@@ -16,3 +16,9 @@ terraform {
 provider "aws" {
   region = "eu-central-1"
 }
+
+# HTTP provider for IP resolution so local dev machine access is enabled
+provider "http" {}
+data "http" "myip" {
+  url = "http://ipv4.icanhazip.com"
+}

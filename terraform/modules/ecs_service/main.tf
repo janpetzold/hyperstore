@@ -12,13 +12,15 @@ resource "aws_subnet" "public" {
 
 # Expose VPC and Subnet for reuse in all services
 output "vpc_id" {
-  value       = aws_vpc.main.id
-  description = "ID of the VPC"
+  value = aws_vpc.main.id
 }
 
-output "public_subnet_ids" {
-  value       = aws_subnet.public[*].id
-  description = "IDs of the public subnets"
+output "public_subnet_id" {
+  value = aws_subnet.public.id
+}
+
+output "vpc_cidr_block" {
+  value = aws_vpc.main.cidr_block
 }
 
 # Internet Gateway for public subnet
@@ -67,6 +69,21 @@ resource "aws_ecs_cluster" "hyperstore_cluster" {
 }
 
 # ECS Task Definition
+variable "environment_variables" {
+  type = list(object({
+    name  = string
+    value = string
+  }))
+  default = []
+  description = "Environment variables for the ECS task"
+}
+
+# Cloudwatch log group
+resource "aws_cloudwatch_log_group" "hyperstore_logs" {
+  name              = "hyperstore-node-logs"
+  retention_in_days = 30  # retention period
+}
+
 resource "aws_ecs_task_definition" "hyperstore_task" {
   family                   = "hyperstore-fargate-task"
   network_mode             = "awsvpc"
@@ -82,6 +99,17 @@ resource "aws_ecs_task_definition" "hyperstore_task" {
       hostPort      = 80
       protocol      = "tcp"
     }]
+    environment = var.environment_variables
+    # Setup logs in case container fails or whatever
+    logConfiguration= {
+      logDriver= "awslogs",
+      options= {
+          awslogs-create-group= "true",
+          awslogs-group= aws_cloudwatch_log_group.hyperstore_logs.name,
+          awslogs-region= "eu-central-1",
+          awslogs-stream-prefix= "hyperstore-logs"
+      }
+    }
   }])
 
   execution_role_arn = var.ecs_task_execution_role_arn
@@ -102,9 +130,22 @@ resource "aws_ecs_service" "hyperstore_service" {
     security_groups = [aws_security_group.fargate_sg.id]
     assign_public_ip = true
   }
+  
 }
 
 output "fargate_security_group_id" {
   value = aws_security_group.fargate_sg.id
   description = "The ID of the security group used by the Fargate tasks"
+}
+
+# Data source to get the task details
+data "aws_ecs_task" "hyperstore_task" {
+  cluster = aws_ecs_cluster.hyperstore_cluster.id
+  task    = aws_ecs_service.hyperstore_service.task_definition
+}
+
+# Output the public IP of the Fargate task
+output "fargate_task_public_ip" {
+  value = data.aws_ecs_task.hyperstore_task.network_interfaces[0].association[0].public_ip
+  description = "The public IP assigned to the Fargate task"
 }

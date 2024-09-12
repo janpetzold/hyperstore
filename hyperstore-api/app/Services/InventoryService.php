@@ -3,40 +3,55 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Facades\Log;
 
 class InventoryService
 {
-    private $redis;
     private $region;
 
     public function __construct()
     {
-        $this->redis = Redis::connection('inventory');
-        $this->region = env('APP_REGION', 'eu');
+        $this->region = config('app.region', 'eu');
+        $this->validateRedisConnection();
+    }
+
+    private function validateRedisConnection()
+    {
+        try {
+            $ping = Redis::connection()->ping();
+            if ($ping === "pong" || $ping == 1) {
+                $redisHost = config('database.redis.inventory.host');
+                Log::info("Redis connection to host {$redisHost} successful");
+            } else {
+                Log::error("Could not verify Redis connection");
+            }
+        } catch (\Exception $e) {
+            Log::error("Redis connection failed: " . $e->getMessage());
+        }
     }
 
     public function getInventory($region = null)
     {
         $region = $region ?? $this->region;
-        return $this->redis->get("hyper-{$region}") ?? 0;
+        return Redis::connection()->get("hyper-{$region}") ?? 0;
     }
 
     public function setInventory($amount, $region = null)
     {
         $region = $region ?? $this->region;
-        $this->redis->set("hyper-{$region}", $amount);
+        Redis::connection()->set("hyper-{$region}", $amount);
     }
 
     public function incrementInventory($amount = 1, $region = null)
     {
         $region = $region ?? $this->region;
-        return $this->redis->incrby("hyper-{$region}", $amount);
+        return Redis::connection()->incrby("hyper-{$region}", $amount);
     }
 
     public function decrementInventory($amount = 1, $region = null)
     {
         $region = $region ?? $this->region;
-        $newAmount = $this->redis->decrby("hyper-{$region}", $amount);
+        $newAmount = Redis::connection()->decrby("hyper-{$region}", $amount);
         return max($newAmount, 0);  // Ensure inventory doesn't go below 0
     }
 

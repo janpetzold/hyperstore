@@ -37,8 +37,11 @@ But just check the codebase.
 
 Before creation make sure to clear everything (see https://stackoverflow.com/a/61953327/675454, https://stackoverflow.com/a/55474102/675454):
 
+    # Optimization
     composer dumpautoload
     php artisan optimize:clear
+    # Cache routes
+    php artisan route:cache
 
 The `Dockerfile`is prepared and an image can be created via
 
@@ -46,7 +49,9 @@ The `Dockerfile`is prepared and an image can be created via
 
 Run this through
 
-    docker run -p 80:80 --name hyperstore hyperstore
+    docker run -p 80:80 --network="host" --name hyperstore hyperstore
+
+The "host" parameter is needed in case you want to access the locally running Redis DB.
 
 Trace logs via
 
@@ -82,6 +87,9 @@ SSH into the container
     # Check that image is actually there
     aws ecr list-images --repository-name hyperstore-repo --region eu-central-1
 
+    # Re-deploy the service with a new image uploaded to ECR
+    aws ecs update-service --cluster hyperstore-cluster --service hyperstore-service --force-new-deployment
+
 ## IaC
 
 First install Terraform following the [instructions](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli). 
@@ -116,7 +124,11 @@ To find out the IP address of the recent task deployment do this - unfortunately
 
 ## Database
 
-We use Redis both for logging activity and the actual "data" that is being processed. 
+We use Redis both for logging activity and the actual "data" that is being processed. For now we
+use an EC2-based Redis DB. The issue here is that an Elastic IP is defined here that shall
+not change since this would affect the logic, therefore it was removed from terraform handling via
+
+    terraform state rm aws_eip.redis_hyperstore_eip
 
 ### Localhost
 
@@ -180,15 +192,14 @@ And I needed to update php.ini for debugging to work (place this right at the be
 
 Then just start "Listen for XDebug" in VSCode Run & Debug menu. Install the PHPUnit and PHP Debug extensions beforehand.
 
-## Deploy
-
-To re-deploy the service with a new image uploaded to ECR just do
-
-    aws ecs update-service --cluster hyperstore-cluster --service hyperstore-service --force-new-deployment
-
 ## Todos & Known issues
 
+[x] Add AWS parameter store in terraform using values from .env
+- setup AWS Parameter Store
+- use custom Redis to speed up provisioning time
+- automatically set A record to (changing) Fargate IP via script
 - .env file is part of Docker image. Seems to be needed for the app key. Remove .env from docker build and externalize these variables via AWS Systems Manager Parameter Store for sake of pricing / simplicity
+- fix missing .env file for local docker image: must be there for local testing, must not be there for AWS
 - Move Dockerfile out of api dir
 - add php-fpm and a "real" web server but make it work in the Docker container
 - add resource groups in terraform

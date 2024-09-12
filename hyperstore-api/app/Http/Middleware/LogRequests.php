@@ -10,8 +10,15 @@ class LogRequests
 {
     public function handle($request, Closure $next)
     {
-        $redis = app('redis')->connection('requestlog');
+        try {
+            $redis = Redis::connection('requestlog');
+            $redis->ping();
+        } catch (\Exception $e) {
+            \Log::error("Redis connection failed: " . $e->getMessage());
+            return $next($request);
+        }
 
+        // This goes on only if Redis is working
         $currentMinute = Carbon::now()->format('Y-m-d\TH:i:00\Z');
         $key = "{$currentMinute}";
 

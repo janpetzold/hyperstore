@@ -5,7 +5,13 @@ RUN apk add --no-cache \
     libzip-dev \
     zip \
     unzip \
-&& docker-php-ext-install pdo zip
+    autoconf \
+    gcc \
+    g++ \
+    make \
+    && pecl install redis \
+    && docker-php-ext-install pdo zip \
+    && docker-php-ext-enable redis
 
 # Install PHP extensions
 RUN docker-php-ext-install pdo zip
@@ -22,5 +28,8 @@ COPY . .
 # Install dependencies
 RUN composer install
 
-# Start the Laravel development server
-CMD php artisan serve --host=0.0.0.0 --port=80
+# Log all laravel logs also in stdout so we can capture them (e.g. via Cloudwatch) and start the PHP server
+CMD tail -f /var/www/storage/logs/laravel.log & php artisan serve --host=0.0.0.0 --port=80
+
+# Debug - make sure container does not die
+#CMD ["sleep", "infinity"]

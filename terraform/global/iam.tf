@@ -19,6 +19,26 @@ resource "aws_iam_role" "ecs_task_execution_role" {
       }
     ]
   })
+
+  # Role needs to have permission to write logs
+  inline_policy {
+    name = "logs_policy"
+    policy = jsonencode({
+      Version = "2012-10-17"
+      Statement = [
+        {
+          Effect = "Allow"
+          Action = [
+            "logs:CreateLogGroup",
+            "logs:CreateLogStream",
+            "logs:PutLogEvents",
+            "logs:DescribeLogStreams"
+          ]
+          Resource = "*"
+        }
+      ]
+    })
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
