@@ -130,7 +130,6 @@ resource "aws_ecs_service" "hyperstore_service" {
     security_groups = [aws_security_group.fargate_sg.id]
     assign_public_ip = true
   }
-  
 }
 
 output "fargate_security_group_id" {
@@ -138,14 +137,21 @@ output "fargate_security_group_id" {
   description = "The ID of the security group used by the Fargate tasks"
 }
 
-# Data source to get the task details
-data "aws_ecs_task" "hyperstore_task" {
-  cluster = aws_ecs_cluster.hyperstore_cluster.id
-  task    = aws_ecs_service.hyperstore_service.task_definition
+data "aws_network_interface" "ecs_eni" {
+  filter {
+    name   = "group-id"
+    values = [aws_security_group.fargate_sg.id]
+  }
+
+  filter {
+    name   = "status"
+    values = ["in-use"]
+  }
+
+  depends_on = [aws_ecs_service.hyperstore_service]
 }
 
-# Output the public IP of the Fargate task
-output "fargate_task_public_ip" {
-  value = data.aws_ecs_task.hyperstore_task.network_interfaces[0].association[0].public_ip
-  description = "The public IP assigned to the Fargate task"
+output "ecs_task_public_ip" {
+  value = data.aws_network_interface.ecs_eni.association[0].public_ip
+  description = "The public IP address of the ECS Fargate task"
 }

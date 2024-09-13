@@ -35,7 +35,7 @@ resource "aws_security_group" "redis_hyperstore_sg" {
     from_port   = 6379
     to_port     = 6379
     protocol    = "tcp"
-    cidr_blocks = [module.ecs_service.fargate_task_public_ip + "/32"]
+    cidr_blocks = [format("%s/32", module.ecs_service.ecs_task_public_ip)]
   }
 
   # Allow access from my local IP
