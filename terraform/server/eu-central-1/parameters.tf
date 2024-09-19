@@ -2,7 +2,7 @@
 # It basically reads the .env file and sets each line/value as a parameter.
 # For now only some REDIS config needs to be overwritten.
 locals {
-  env_file_content = file("${path.module}/../../hyperstore-api/.env")
+  env_file_content = file("${path.module}/../../../hyperstore-api/.env")
 
   # Split file content by newline
   env_lines = [for line in split("\n", local.env_file_content) : line

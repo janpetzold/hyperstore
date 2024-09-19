@@ -161,6 +161,20 @@ Replace Bastion host IP address and Cluster URL accordingly. Leave this command 
 
 where you can interact with the remote database.
 
+
+### Client
+
+The clients use locust as test framework.
+
+    locust
+
+    aws ssm send-command --document-name "AWS-RunShellScript" --targets "Key=instanceids,Values=i-03d82cc723c65fd85" --parameters 'commands=["locust --headless --users 10 --spawn-rate 1 -H http://3.76.34.171"]'
+
+Check execution at
+
+https://eu-central-1.console.aws.amazon.com/systems-manager/run-command
+
+
 ## Debugging
 
 Prepare debugging via
@@ -195,8 +209,14 @@ Then just start "Listen for XDebug" in VSCode Run & Debug menu. Install the PHPU
 ## Todos & Known issues
 
 [x] Add AWS parameter store in terraform using values from .env
+[x] Add initial scripted client based on locust
+[ ] Client shall not need public IP, SSH or other stuff
+[ ] Find way to provision all clients with locustfile.py test file even though they're based on an AMI
+[ ] Enhance script to setup fice clients insted of one, spread them across EU region
 - setup AWS Parameter Store
-- use custom Redis to speed up provisioning time
+[x] use custom Redis to speed up provisioning time
+- move everything to a private subnet instead of a public one
+- get rid of "static" Elastic IP for Redis for cost reasons (could be fixed via Parameter store)
 - automatically set A record to (changing) Fargate IP via script
 - .env file is part of Docker image. Seems to be needed for the app key. Remove .env from docker build and externalize these variables via AWS Systems Manager Parameter Store for sake of pricing / simplicity
 - fix missing .env file for local docker image: must be there for local testing, must not be there for AWS
