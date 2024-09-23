@@ -10,8 +10,8 @@ hyperstore-api/.env
 hyperstore-api/.phpunit.result.cache
 terraform/.terraform*
 terraform/client/terraform*
-terraform/client/eu-central-1/.terraform*
-terraform/client/eu-central-1/terraform*
+terraform/client/eu/.terraform*
+terraform/client/eu/terraform*
 terraform/server/terraform*
 terraform/session-manager-plugin*
 terraform/server/global/.terraform*

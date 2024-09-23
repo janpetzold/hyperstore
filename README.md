@@ -161,19 +161,54 @@ Replace Bastion host IP address and Cluster URL accordingly. Leave this command 
 
 where you can interact with the remote database.
 
-
 ### Client
 
-The clients use locust as test framework.
+The clients use locust as test framework. Locust is pre-installed on the AMI-based VMs (EC2 Nano instance). Essentially this is just an Ubuntu LTS machine with the following setup:
 
-    locust
+    sudo apt-get update
+    sudo apt-get install amazon-ssm-agent
+    sudo apt-get install -y python3-pip
+    pip3 install locust
+    wget https://raw.githubusercontent.com/janpetzold/hyperstore/refs/heads/main/terraform/client/locustfile.py -O /home/ubuntu/locustfile.py
 
-    aws ssm send-command --document-name "AWS-RunShellScript" --targets "Key=instanceids,Values=i-03d82cc723c65fd85" --parameters 'commands=["locust --headless --users 10 --spawn-rate 1 -H http://3.76.34.171"]'
+The AMI is zone-specific so it needs to be copied to all the regions/zones we care about:
+
+    # Source Frankfurt, Target Stockholm
+    aws ec2 copy-image --source-image-id ami-01281875f5855b6d6 --source-region eu-central-1 --region eu-north-1 --name "Hyperstore Locust Client" --description "Locust client AMI for benchmarking Hyperstore"
+    # Source Frankfurt, Target London
+    aws ec2 copy-image --source-image-id ami-01281875f5855b6d6 --source-region eu-central-1 --region eu-west-2 --name "Hyperstore Locust Client" --description "Locust client AMI for benchmarking Hyperstore"
+
+For now the AMI IDs were as follows
+
+eu-central-1: ami-01281875f5855b6d6
+eu-north-1: ami-01eb185b7fca4eeac
+eu-west-2: ami-084054325f473473c
+
+I also tried `user_data` scripts but this was pretty unreliable so I went with AMIs.
+
+To run the "default" load test just the host needs to be supplied via AWS SSM like this:
+
+    # Ten concurrent users Frankfurt
+    aws ssm send-command --region eu-central-1 --document-name "AWS-RunShellScript" --targets "Key=instanceids,Values=i-01929202c090a68f9" --parameters 'commands=["locust --headless --users 10 --spawn-rate 1 --run-time 60s -H http://3.72.8.141"]'
+
+    # Eight concurrent users London
+    aws ssm send-command --region eu-west-2 --document-name "AWS-RunShellScript" --targets "Key=instanceids,Values=i-02c12204a747dead5" --parameters 'commands=["locust --headless --users 8 --spawn-rate 1 --run-time 60s -H http://3.72.8.141"]'
+
+    # Five concurrent users Stockholm
+    aws ssm send-command -region eu-north-1 --document-name "AWS-RunShellScript" --targets "Key=instanceids,Values=i-08805179a70089c5d" --parameters 'commands=["locust --headless --users 5 --spawn-rate 1 --run-time 60s -H http://3.72.8.141"]'
 
 Check execution at
 
 https://eu-central-1.console.aws.amazon.com/systems-manager/run-command
 
+Now it may be desired to replace the deafult load script with a custom one. See `locustfile.py` on what is currently used. To replace that without opening another port SSM can also be used, it is not very elegant but essentially we encode the file to Base64 here and "upload" it via echo command which works reliably (at least whenf ile is in kByte range).
+
+    base64_loadtest=$(base64 -w 0 locustfile.py)
+    echo $base64_loadtest
+
+    aws ssm send-command --instance-ids "i-0f2c1281ce6b4f466" --document-name "AWS-RunShellScript" --parameters "commands=[\"echo '$base64_loadtest' | base64 -d > /home/ubuntu/locustfile.py\"]"  --output text
+
+Make sure to execute this in the directory where `locustfile.py` is.
 
 ## Debugging
 
@@ -210,20 +245,21 @@ Then just start "Listen for XDebug" in VSCode Run & Debug menu. Install the PHPU
 
 [x] Add AWS parameter store in terraform using values from .env
 [x] Add initial scripted client based on locust
-[ ] Client shall not need public IP, SSH or other stuff
-[ ] Find way to provision all clients with locustfile.py test file even though they're based on an AMI
-[ ] Enhance script to setup fice clients insted of one, spread them across EU region
-- setup AWS Parameter Store
+[x] Client shall not need public IP, SSH or other stuff > Public IP and Subnet are indeed needed for SSM, SSH is not
+[x] Find way to provision all clients with locustfile.py test file even though they're based on an AMI
+[x] start client setup with 3 clients from EU via AMI predefined based on Locust
+[ ] setup Locust Master/Slave and read actual data via UI / file
+[ ] setup AWS Parameter Store
 [x] use custom Redis to speed up provisioning time
-- move everything to a private subnet instead of a public one
-- get rid of "static" Elastic IP for Redis for cost reasons (could be fixed via Parameter store)
-- automatically set A record to (changing) Fargate IP via script
-- .env file is part of Docker image. Seems to be needed for the app key. Remove .env from docker build and externalize these variables via AWS Systems Manager Parameter Store for sake of pricing / simplicity
-- fix missing .env file for local docker image: must be there for local testing, must not be there for AWS
-- Move Dockerfile out of api dir
-- add php-fpm and a "real" web server but make it work in the Docker container
-- add resource groups in terraform
-- add load balancer to have a static IP
-- setup real domain "hyperstore.cc" and link to EU/NAR/SA
-- setup TLS
-- start client setup with 5 clients from EU via AMI predefined based on Locust
+[ ] move everything to a private subnet instead of a public one
+[ ] Improve DB performance (400ms is way too much)
+[ ] get rid of "static" Elastic IP for Redis for cost reasons (could be fixed via Parameter store)
+[ ] automatically set A record to (changing) Fargate IP via script
+[ ] .env file is part of Docker image. Seems to be needed for the app key. Remove .env from docker build and externalize these variables via AWS Systems Manager Parameter Store for sake of pricing / simplicity
+[ ] fix missing .env file for local docker image: must be there for local testing, must not be there for AWS
+[ ] Move Dockerfile out of api dir
+[ ] add php-fpm and a "real" web server but make it work in the Docker container
+[ ] add resource groups in terraform
+[ ] add load balancer to have a static IP
+[ ] setup real domain "hyperstore.cc" and link to EU/NAR/SA
+[ ] setup TLS
