@@ -2,13 +2,10 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 4.0"  # Use the version you prefer
+      version = "~> 4.0"
     }
   }
 }
-
-# Use the aws provider
-provider "aws" {}
 
 variable "region_name" {}
 variable "availability_zones" {
@@ -61,6 +58,12 @@ resource "aws_route_table_association" "main" {
   route_table_id = aws_route_table.main.id
 }
 
+output "vpc_id" {
+  description = "The ID of the created VPC"
+  value       = aws_vpc.main.id
+}
+
 output "subnet_ids" {
+  description = "The ID of the created Subnets"
   value = aws_subnet.main[*].id
 }

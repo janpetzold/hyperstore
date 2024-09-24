@@ -1,4 +1,3 @@
-# Provider configurations
 provider "aws" {
   alias  = "eu-central-1"
   region = "eu-central-1"
@@ -51,7 +50,8 @@ module "ec2_instance_eu_central_1" {
   subnet_id = module.vpc_eu_central_1.subnet_ids[0]
   instance_profile_name = aws_iam_instance_profile.instance.name
   region_name = "eu-central-1"
-  ami_id = "ami-01281875f5855b6d6"  # AMI ID for eu-central-1
+  ami_id = "ami-0fab6653f0bd437c0"  # AMI ID for eu-central-1
+  vpc_id = module.vpc_eu_central_1.vpc_id
 }
 
 module "ec2_instance_eu_north_1" {
@@ -62,7 +62,8 @@ module "ec2_instance_eu_north_1" {
   subnet_id = module.vpc_eu_north_1.subnet_ids[0]
   instance_profile_name = aws_iam_instance_profile.instance.name
   region_name = "eu-north-1"
-  ami_id = "ami-01eb185b7fca4eeac"  # AMI ID for eu-north-1
+  ami_id = "ami-07770aed8130589ff"  # AMI ID for eu-north-1
+  vpc_id = module.vpc_eu_north_1.vpc_id
 }
 
 module "ec2_instance_eu_west_2" {
@@ -73,7 +74,8 @@ module "ec2_instance_eu_west_2" {
   subnet_id = module.vpc_eu_west_2.subnet_ids[0]
   instance_profile_name = aws_iam_instance_profile.instance.name
   region_name = "eu-west-2"
-  ami_id = "ami-084054325f473473c"  # AMI ID for eu-west-2
+  ami_id = "ami-0a63027f8a02ac374"  # AMI ID for eu-west-2
+  vpc_id = module.vpc_eu_west_2.vpc_id
 }
 
 # IAM role and instance profile (defined once, used across regions)
@@ -113,15 +115,27 @@ resource "aws_iam_role_policy_attachment" "instance" {
   role       = aws_iam_role.instance.name
 }
 
-# Outputs
+# Output instance ID and public IP
 output "instance_id_eu_central_1" {
   value = module.ec2_instance_eu_central_1.instance_id
+}
+
+output "public_ip_eu_central_1" {
+  value = module.ec2_instance_eu_central_1.public_ip
 }
 
 output "instance_id_eu_north_1" {
   value = module.ec2_instance_eu_north_1.instance_id
 }
 
+output "public_ip_eu_north_1" {
+  value = module.ec2_instance_eu_north_1.public_ip
+}
+
 output "instance_id_eu_west_2" {
   value = module.ec2_instance_eu_west_2.instance_id
+}
+
+output "public_ip_eu_west_2" {
+  value = module.ec2_instance_eu_west_2.public_ip
 }

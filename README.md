@@ -166,40 +166,72 @@ where you can interact with the remote database.
 The clients use locust as test framework. Locust is pre-installed on the AMI-based VMs (EC2 Nano instance). Essentially this is just an Ubuntu LTS machine with the following setup:
 
     sudo apt-get update
-    sudo apt-get install amazon-ssm-agent
-    sudo apt-get install -y python3-pip
-    pip3 install locust
+    sudo apt-get upgrade
+    sudo apt-get install python3-pip
+    pip3 install locust --break-system-packages
     wget https://raw.githubusercontent.com/janpetzold/hyperstore/refs/heads/main/terraform/client/locustfile.py -O /home/ubuntu/locustfile.py
+    # Add path to ~/.bashrc
+    export PATH="$PATH:/home/ubuntu/.local/bin"
+    source ~/.bashrc
+    # Then assign proper AMI role AmazonSSMManagedInstanceCore and restart service
+    sudo systemctl restart snap.amazon-ssm-agent.amazon-ssm-agent.service
+
+Amazon SSM agent was available out of the box using the AWS Ubuntu image:
+
+    sudo systemctl status snap.amazon-ssm-agent.amazon-ssm-agent.service
 
 The AMI is zone-specific so it needs to be copied to all the regions/zones we care about:
 
     # Source Frankfurt, Target Stockholm
-    aws ec2 copy-image --source-image-id ami-01281875f5855b6d6 --source-region eu-central-1 --region eu-north-1 --name "Hyperstore Locust Client" --description "Locust client AMI for benchmarking Hyperstore"
+    aws ec2 copy-image --source-image-id ami-0fab6653f0bd437c0 --source-region eu-central-1 --region eu-north-1 --name "Hyperstore Locust Client" --description "Locust client AMI for benchmarking Hyperstore for eu-north-1"
     # Source Frankfurt, Target London
-    aws ec2 copy-image --source-image-id ami-01281875f5855b6d6 --source-region eu-central-1 --region eu-west-2 --name "Hyperstore Locust Client" --description "Locust client AMI for benchmarking Hyperstore"
+    aws ec2 copy-image --source-image-id ami-0fab6653f0bd437c0 --source-region eu-central-1 --region eu-west-2 --name "Hyperstore Locust Client" --description "Locust client AMI for benchmarking Hyperstore for eu-west-2"
 
 For now the AMI IDs were as follows
 
-eu-central-1: ami-01281875f5855b6d6
-eu-north-1: ami-01eb185b7fca4eeac
-eu-west-2: ami-084054325f473473c
+eu-central-1: ami-0fab6653f0bd437c0
+eu-north-1: ami-07770aed8130589ff
+eu-west-2: ami-0a63027f8a02ac374
 
 I also tried `user_data` scripts but this was pretty unreliable so I went with AMIs.
 
 To run the "default" load test just the host needs to be supplied via AWS SSM like this:
 
-    # Ten concurrent users Frankfurt
-    aws ssm send-command --region eu-central-1 --document-name "AWS-RunShellScript" --targets "Key=instanceids,Values=i-01929202c090a68f9" --parameters 'commands=["locust --headless --users 10 --spawn-rate 1 --run-time 60s -H http://3.72.8.141"]'
+    # Frankfurt node as master 
+    aws ssm send-command --region eu-central-1 --document-name "AWS-RunShellScript" --targets "Key=instanceids,Values=i-0d58a8a61174121c1" --parameters 'commands=["cd /home/ubuntu", "locust --master"]'
 
-    # Eight concurrent users London
-    aws ssm send-command --region eu-west-2 --document-name "AWS-RunShellScript" --targets "Key=instanceids,Values=i-02c12204a747dead5" --parameters 'commands=["locust --headless --users 8 --spawn-rate 1 --run-time 60s -H http://3.72.8.141"]'
+    # London is worker #1
+    aws ssm send-command --region eu-west-2 --document-name "AWS-RunShellScript" --targets "Key=instanceids,Values=i-06590cbc8df5bda27" --parameters 'commands=["cd /home/ubuntu", "locust --worker --master-host=3.75.85.87"]'
 
-    # Five concurrent users Stockholm
-    aws ssm send-command -region eu-north-1 --document-name "AWS-RunShellScript" --targets "Key=instanceids,Values=i-08805179a70089c5d" --parameters 'commands=["locust --headless --users 5 --spawn-rate 1 --run-time 60s -H http://3.72.8.141"]'
+    # Stockholm is worker #2
+    aws ssm send-command --region eu-north-1 --document-name "AWS-RunShellScript" --targets "Key=instanceids,Values=i-0be0cba45a6e15e08" --parameters 'commands=["cd /home/ubuntu", "locust --worker --master-host=3.75.85.87"]'
 
 Check execution at
 
 https://eu-central-1.console.aws.amazon.com/systems-manager/run-command
+
+#### Master / Slave and UI
+
+By default Locust offers a UI at port 8089 but we don't need to open this one since it would be publically available. Instead fo this we forward the port to our local machine:
+
+    aws ssm start-session --target i-0d58a8a61174121c1 --document-name AWS-StartPortForwardingSession --parameters '{"portNumber":["8089"],"localPortNumber":["8089"]}'
+
+and can open the UI then via
+
+http://localhost:8089
+
+In there you can set up the actual load test parameters (number of users, spawn rate, duration etc.). You will end up with something like this
+
+![Locust sample view](images/locust-sample.png)
+
+instance_id_eu_central_1 = "i-0b35666114424c89a"
+instance_id_eu_north_1 = "i-03ad18ce2f9efbdd2"
+instance_id_eu_west_2 = "i-026dfce053c37f11e"
+public_ip_eu_central_1 = "3.73.132.210"
+public_ip_eu_north_1 = "16.170.163.218"
+public_ip_eu_west_2 = "35.177.215.178"
+
+#### Load test update
 
 Now it may be desired to replace the deafult load script with a custom one. See `locustfile.py` on what is currently used. To replace that without opening another port SSM can also be used, it is not very elegant but essentially we encode the file to Base64 here and "upload" it via echo command which works reliably (at least whenf ile is in kByte range).
 
@@ -248,7 +280,9 @@ Then just start "Listen for XDebug" in VSCode Run & Debug menu. Install the PHPU
 [x] Client shall not need public IP, SSH or other stuff > Public IP and Subnet are indeed needed for SSM, SSH is not
 [x] Find way to provision all clients with locustfile.py test file even though they're based on an AMI
 [x] start client setup with 3 clients from EU via AMI predefined based on Locust
+[ ] Update AMI so we can use a proper locust version 2.3*
 [ ] setup Locust Master/Slave and read actual data via UI / file
+[ ] Modify locustfile.py so we have tests that actually make sense
 [ ] setup AWS Parameter Store
 [x] use custom Redis to speed up provisioning time
 [ ] move everything to a private subnet instead of a public one
