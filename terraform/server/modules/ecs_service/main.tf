@@ -3,11 +3,19 @@ resource "aws_vpc" "main" {
   cidr_block = "10.0.0.0/16"
 }
 
-# Public Subnet needed for ECS Fargate
+# Public Subnet needed for Internet-accessible Gateway
 resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.1.0/24"
+  cidr_block              = "10.0.0.0/24"
   map_public_ip_on_launch = true
+}
+
+
+# Private Subnet needed for ECS Fargate
+resource "aws_subnet" "private" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = "10.0.1.0/24"
+  map_public_ip_on_launch = false
 }
 
 # Expose VPC and Subnet for reuse in all services
@@ -17,6 +25,10 @@ output "vpc_id" {
 
 output "public_subnet_id" {
   value = aws_subnet.public.id
+}
+
+output "private_subnet_id" {
+  value = aws_subnet.private.id
 }
 
 output "vpc_cidr_block" {
@@ -42,6 +54,34 @@ resource "aws_route_table" "public" {
 resource "aws_route_table_association" "public" {
   subnet_id      = aws_subnet.public.id
   route_table_id = aws_route_table.public.id
+}
+
+# NAT Gateway for private subnet so that ECR is accessible since
+# ECS needs to fetch Docker images
+resource "aws_eip" "nat_eip" {
+  count = 1
+  depends_on = [aws_internet_gateway.igw]
+}
+
+resource "aws_nat_gateway" "nat_gw" {
+  allocation_id = aws_eip.nat_eip[0].id
+  subnet_id     = aws_subnet.public.id
+}
+
+# Route Table for private subnet
+resource "aws_route_table" "private" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block     = "0.0.0.0/0"
+    gateway_id     = aws_nat_gateway.nat_gw.id
+  }
+}
+
+# Route Table Association for private subnet
+resource "aws_route_table_association" "private" {
+  subnet_id      = aws_subnet.private.id
+  route_table_id = aws_route_table.private.id
 }
 
 # Security Group for Fargate
@@ -126,10 +166,47 @@ resource "aws_ecs_service" "hyperstore_service" {
   enable_execute_command = true
 
   network_configuration {
-    subnets         = [aws_subnet.public.id]
+    # ECS shall be in private Subnet together with Redis DB
+    subnets         = [aws_subnet.private.id]
     security_groups = [aws_security_group.fargate_sg.id]
-    assign_public_ip = true
+    assign_public_ip = false
   }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.hyperstore_tg.arn
+    container_name   = "hyperstore-app"
+    container_port   = 80
+  }
+}
+
+# Network Load Balancer
+resource "aws_lb" "hyperstore_nlb" {
+  name               = "hyperstore-nlb"
+  load_balancer_type = "network"
+  security_groups    = [aws_security_group.fargate_sg.id]
+  subnets            = [aws_subnet.public.id]
+  internal           = false # Set to true if you want an internal ALB
+}
+
+# Network Load Balancer Listener on port 80 for HTTP
+resource "aws_lb_listener" "hyperstore_listener" {
+  load_balancer_arn = aws_lb.hyperstore_nlb.arn
+  port              = 80
+  protocol          = "TCP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.hyperstore_tg.arn
+  }
+}
+
+# NLB Target Group to direct traffic to ECS
+resource "aws_lb_target_group" "hyperstore_tg" {
+  name        = "hyperstore-tg"
+  port        = 80
+  protocol    = "TCP"
+  vpc_id      = aws_vpc.main.id
+  target_type = "ip"
 }
 
 output "fargate_security_group_id" {
@@ -137,21 +214,12 @@ output "fargate_security_group_id" {
   description = "The ID of the security group used by the Fargate tasks"
 }
 
-data "aws_network_interface" "ecs_eni" {
-  filter {
-    name   = "group-id"
-    values = [aws_security_group.fargate_sg.id]
-  }
-
-  filter {
-    name   = "status"
-    values = ["in-use"]
-  }
-
-  depends_on = [aws_ecs_service.hyperstore_service]
+output "alb_dns_name" {
+  value       = aws_lb.hyperstore_nlb.dns_name
+  description = "The DNS name of the Application Load Balancer"
 }
 
-output "ecs_task_public_ip" {
-  value = data.aws_network_interface.ecs_eni.association[0].public_ip
-  description = "The public IP address of the ECS Fargate task"
+output "alb_zone_id" {
+  value       = aws_lb.hyperstore_nlb.zone_id
+  description = "The zone ID of the Application Load Balancer"
 }

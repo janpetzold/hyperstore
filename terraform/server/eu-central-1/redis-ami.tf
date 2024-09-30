@@ -12,7 +12,8 @@ resource "aws_instance" "redis_instance" {
   instance_type = "t2.micro"
   
   vpc_security_group_ids = [aws_security_group.redis_hyperstore_sg.id]
-  subnet_id              = module.ecs_service.public_subnet_id
+  subnet_id              = module.ecs_service.private_subnet_id
+  private_ip = "10.0.1.12"
 
   tags = {
     Name = "RedisInstance"
@@ -30,12 +31,13 @@ resource "aws_security_group" "redis_hyperstore_sg" {
   description = "Allow Redis traffic"
   vpc_id      = module.ecs_service.vpc_id
 
-  # Allow ingress from the ECS instance
+  # Allow ingress from all machines in the same subnet
   ingress {
     from_port   = 6379
     to_port     = 6379
     protocol    = "tcp"
-    cidr_blocks = [format("%s/32", module.ecs_service.ecs_task_public_ip)]
+    # Allow access from all machines in same subnet 
+    cidr_blocks = [module.ecs_service.vpc_cidr_block]
   }
 
   # Allow access from my local IP
@@ -53,16 +55,3 @@ resource "aws_security_group" "redis_hyperstore_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
-
-# resource "aws_eip" "redis_hyperstore_eip" {
-#   instance = aws_instance.redis_instance.id
-  
-#   # We want to keep that one, otherwise we can't reference it in code
-#   lifecycle {
-#     prevent_destroy = true
-#   }
-# }
-
-#output "instance_ip" {
-#  value = aws_eip.redis_hyperstore_eip.public_ip
-#}

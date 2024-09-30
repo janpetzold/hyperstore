@@ -280,14 +280,18 @@ Then just start "Listen for XDebug" in VSCode Run & Debug menu. Install the PHPU
 [x] Client shall not need public IP, SSH or other stuff > Public IP and Subnet are indeed needed for SSM, SSH is not
 [x] Find way to provision all clients with locustfile.py test file even though they're based on an AMI
 [x] start client setup with 3 clients from EU via AMI predefined based on Locust
-[ ] Update AMI so we can use a proper locust version 2.3*
-[ ] setup Locust Master/Slave and read actual data via UI / file
-[ ] Modify locustfile.py so we have tests that actually make sense
+[x] Update AMI so we can use a proper locust version 2.3*
+[x] setup Locust Master/Slave and read actual data via UI / file
+[ ] Modify locustfile.py so we have tests that actually make 
+[ ] Improve Redis DB connection, figure out how to measure this
+[ ] Re-establish SSH access to Redis
+[ ] Add Octane for high-performance PHP serving
 [ ] setup AWS Parameter Store
 [x] use custom Redis to speed up provisioning time
 [ ] move everything to a private subnet instead of a public one
 [ ] Improve DB performance (400ms is way too much)
 [ ] get rid of "static" Elastic IP for Redis for cost reasons (could be fixed via Parameter store)
+[ ] Generate system architecture based on Terraform files
 [ ] automatically set A record to (changing) Fargate IP via script
 [ ] .env file is part of Docker image. Seems to be needed for the app key. Remove .env from docker build and externalize these variables via AWS Systems Manager Parameter Store for sake of pricing / simplicity
 [ ] fix missing .env file for local docker image: must be there for local testing, must not be there for AWS
