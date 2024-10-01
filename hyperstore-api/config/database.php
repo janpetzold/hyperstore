@@ -15,7 +15,7 @@ return [
     |
     */
 
-    'default' => env('DB_CONNECTION', 'redis'),
+    'default' => env('DB_CONNECTION', 'sqlite'),
 
     /*
     |--------------------------------------------------------------------------
@@ -44,6 +44,17 @@ return [
     |
     */
 
+    'connections' => [
+         // SQLite needed for telescope
+        'sqlite' => [
+            'driver' => 'sqlite',
+            'url' => env('DATABASE_URL'),
+            'database' => env('DB_DATABASE', database_path('database.sqlite')),
+            'prefix' => '',
+            'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
+        ],
+    ],
+
     'redis' => [
         'client' => env('REDIS_CLIENT', 'phpredis'),
 
@@ -66,5 +77,9 @@ return [
             'database' => env('REDIS_INVENTORY_DB', 2),  // Use a different database index for inventory
         ],
     ],
+
+    // Needed because of https://stackoverflow.com/a/55510626/675454
+    'fetch' => PDO::FETCH_CLASS, // Returns DB objects in an array format.
+    'migrations' => 'migrations'
 
 ];

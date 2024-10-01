@@ -1,5 +1,7 @@
 .DS_Store
 hyperstore-api/.phpunit.cache
+hyperstore-api/composer.lock
+hyperstore-api/frankenphp
 hyperstore-api/node_modules
 hyperstore-api/public/build
 hyperstore-api/public/hot
@@ -8,6 +10,7 @@ hyperstore-api/storage/*.key
 hyperstore-api/vendor
 hyperstore-api/.env
 hyperstore-api/.phpunit.result.cache
+hyperstore-api/telescope/db.sqlite
 terraform/.terraform*
 terraform/client/terraform*
 terraform/client/eu/.terraform*

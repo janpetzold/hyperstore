@@ -32,16 +32,6 @@ class LogRequests
         $count = $redis->get($key);
         \Log::info("Request count for {$currentMinute}: {$count}");
 
-        // Optionally, you can retrieve and log the last hour's worth of data
-        for ($i = 1; $i <= 60; $i++) {
-            $pastMinute = Carbon::now()->subMinutes($i)->format('Y-m-d H:i');
-            $pastKey = "requests:{$pastMinute}";
-            if ($redis->exists($pastKey)) {
-                $pastCount = $redis->get($pastKey);
-                \Log::info("Historical data - {$pastMinute}: {$pastCount}");
-            }
-        }
-
         return $next($request);
     }
 }

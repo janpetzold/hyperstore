@@ -6,7 +6,7 @@ This is a virtual store that only exists to test scalability & IaC based on Lara
 
 This project is based on Laravel. To get started do a 
 
-    sudo apt install php php-xml php-curl
+    sudo apt install php php-xml php-curl php-redis php-sqlite3
     sudo apt install composer
 
 Make sure that PHP fileinfo and Redis extension are enabled in `php.ini`:
@@ -25,6 +25,19 @@ This will take a while and shall give you a subdirectory hyperstore-api. Now do 
     php artisan key:generate
     php artisan serve
 
+## PHP
+
+For some of the advanced features you should use PHP 8.3.x. This is not the default on Ubuntu, therefore do
+
+    sudo add-apt-repository ppa:ondrej/php
+    sudo apt update
+    sudo apt upgrade
+    sudo apt install php-redis php-sqlite3
+
+Check PHP version via
+
+    php --version
+
 ## Code
 
 The controller was initiated via
@@ -33,13 +46,50 @@ The controller was initiated via
 
 But just check the codebase.
 
+## Debug
+
+To use Laravel Debugbar just run
+
+    composer require barryvdh/laravel-debugbar --dev
+
+and set
+
+    APP_DEBUG=true
+
+in `.env`. Also activate the middleware so this also works for JSON in `app/Http/Middleware/Kernel.php`:
+
+    \App\Http\Middleware\AppendDebugbar::class
+
+However the inisghts gained by Debugbar seem limited to me. There is more with Telescope but this requires an SQLite database. Install one via
+
+    sudo apt install sqlite3
+    sudo apt install php-sqlite3
+
+On Windows you need to enable
+
+    extension=pdo_sqlite
+    extension=sqlite3
+
+in `php.ini`.
+
+And afterwards install telescope for local environment via
+
+    composer require laravel/telescope --dev
+    php artisan telescope:install
+    php artisan migrate 
+
+Telescope should be available at http://127.0.0.1/telescope then.
+
 ## Docker image
 
 Before creation make sure to clear everything (see https://stackoverflow.com/a/61953327/675454, https://stackoverflow.com/a/55474102/675454):
 
+    # TODO: add comment to clear laravel.log 
     # Optimization
-    composer dumpautoload
     php artisan optimize:clear
+    composer dump-autoload --optimize
+    # Cache config
+    php artisan config:cache
     # Cache routes
     php artisan route:cache
 
@@ -273,6 +323,21 @@ And I needed to update php.ini for debugging to work (place this right at the be
 
 Then just start "Listen for XDebug" in VSCode Run & Debug menu. Install the PHPUnit and PHP Debug extensions beforehand.
 
+## Octane
+
+To speed up the server [Octane](https://laravel.com/docs/11.x/octane#) is used with the [FrankenPHP](https://frankenphp.dev/) server. The impact is quite massive, especially subsequent requests to the same endpoint get a response in less than 50ms (including Redis query) on Fargate (~100ms for local development on Docker or Ubuntu) compared to 400ms for the same request using unoptimized `php artisan serve`.
+
+FrankenPHP only works on Mac or Linux, so on Windows you have to use WSL. Setup via
+
+    composer require laravel/octane
+    php artisan octane:install
+
+Create a `Caddyfile` and you can serve the application just like this
+
+    php artisan octane:start --server=frankenphp
+
+For the Docker image the base of [dunglas/frankenphp](https://hub.docker.com/r/dunglas/frankenphp) was used.
+
 ## Todos & Known issues
 
 [x] Add AWS parameter store in terraform using values from .env
@@ -283,21 +348,23 @@ Then just start "Listen for XDebug" in VSCode Run & Debug menu. Install the PHPU
 [x] Update AMI so we can use a proper locust version 2.3*
 [x] setup Locust Master/Slave and read actual data via UI / file
 [ ] Modify locustfile.py so we have tests that actually make 
-[ ] Improve Redis DB connection, figure out how to measure this
+[x] Improve Redis DB connection, figure out how to measure this (Debugbar, Telescope)
 [ ] Re-establish SSH access to Redis
-[ ] Add Octane for high-performance PHP serving
+[ ] Add IdP for token-based authentication
+[x] Add Octane for high-performance PHP serving
 [ ] setup AWS Parameter Store
 [x] use custom Redis to speed up provisioning time
-[ ] move everything to a private subnet instead of a public one
-[ ] Improve DB performance (400ms is way too much)
+[x] move everything to a private subnet instead of a public one
+[x] Improve DB performance (400ms is way too much) > Octane and logger optimization
 [ ] get rid of "static" Elastic IP for Redis for cost reasons (could be fixed via Parameter store)
 [ ] Generate system architecture based on Terraform files
 [ ] automatically set A record to (changing) Fargate IP via script
 [ ] .env file is part of Docker image. Seems to be needed for the app key. Remove .env from docker build and externalize these variables via AWS Systems Manager Parameter Store for sake of pricing / simplicity
 [ ] fix missing .env file for local docker image: must be there for local testing, must not be there for AWS
 [ ] Move Dockerfile out of api dir
-[ ] add php-fpm and a "real" web server but make it work in the Docker container
+[-] add php-fpm and a "real" web server but make it work in the Docker container
 [ ] add resource groups in terraform
-[ ] add load balancer to have a static IP
+[x] add load balancer to have a static IP
 [ ] setup real domain "hyperstore.cc" and link to EU/NAR/SA
 [ ] setup TLS
+[ ] Refactor terraform structure with modules/scripts
