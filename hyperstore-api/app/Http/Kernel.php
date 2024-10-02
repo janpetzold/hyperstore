@@ -21,8 +21,7 @@ class Kernel extends HttpKernel
         \App\Http\Middleware\TrimStrings::class,
         \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
         // Custom logger middleware
-        // TODO: Optimize performance, this costs around 50ms per request which is way too much
-        \App\Http\Middleware\LogRequests::class
+        \App\Http\Middleware\LogRequests::class,
     ];
 
     /**

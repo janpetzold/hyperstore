@@ -85,6 +85,8 @@ Telescope should be available at http://127.0.0.1/telescope then.
 Before creation make sure to clear everything (see https://stackoverflow.com/a/61953327/675454, https://stackoverflow.com/a/55474102/675454):
 
     # TODO: add comment to clear laravel.log 
+    php artisan config:clear
+    php artisan cache:clear
     # Optimization
     php artisan optimize:clear
     composer dump-autoload --optimize
@@ -338,6 +340,27 @@ Create a `Caddyfile` and you can serve the application just like this
 
 For the Docker image the base of [dunglas/frankenphp](https://hub.docker.com/r/dunglas/frankenphp) was used.
 
+## Domain
+
+The domain hyperstore.cc was configured in Cloudflare with he following settings:
+
+- CNAME mapped to AWS NLB DNS
+- SSL Mode is "Flexible"
+- SSL Edge Certificates set to "Always use HTTPS"
+
+Also I added a WAF rule to block http traffic (field SSL/HTTPS to "off" and then block).
+
+## Performance history
+Over time different changes were applied with an impact on E2E performance. This is summarized here. Baseline is always the `/api/hyper` get call to retrieve the current amount of hyper.
+
+| Action / Change | Environment | Response time |
+| --- | --- | --- |
+| Baseline, no optimization (`php artisan serve`) | Ubuntu (WSL) | 700ms | 
+| Baseline, no optimization (`php artisan serve`) | Fargate | 500ms | 
+| Optimized/removed Laravel middleware | Ubuntu (WSL) | 680ms | 
+| Switch to FrankenPHP | Fargate | 50ms | 
+| Add HTTPS via Cloudflare | Fargate | 55ms | 
+
 ## Todos & Known issues
 
 [x] Add AWS parameter store in terraform using values from .env
@@ -347,12 +370,14 @@ For the Docker image the base of [dunglas/frankenphp](https://hub.docker.com/r/d
 [x] start client setup with 3 clients from EU via AMI predefined based on Locust
 [x] Update AMI so we can use a proper locust version 2.3*
 [x] setup Locust Master/Slave and read actual data via UI / file
-[ ] Modify locustfile.py so we have tests that actually make 
+[ ] Modify locustfile.py so we have tests that actually make sense
 [x] Improve Redis DB connection, figure out how to measure this (Debugbar, Telescope)
+[ ] Find/add artisan script to switch environments
 [ ] Re-establish SSH access to Redis
 [ ] Add IdP for token-based authentication
 [x] Add Octane for high-performance PHP serving
 [ ] setup AWS Parameter Store
+[ ] Automate setting of Cloudflare CNAME record to NLB DNS name via terraform
 [x] use custom Redis to speed up provisioning time
 [x] move everything to a private subnet instead of a public one
 [x] Improve DB performance (400ms is way too much) > Octane and logger optimization

@@ -11,7 +11,7 @@ hyperstore-api/vendor
 hyperstore-api/.env
 hyperstore-api/.phpunit.result.cache
 hyperstore-api/telescope/db.sqlite
-terraform/.terraform*
+terraform/.terraform
 terraform/client/terraform*
 terraform/client/eu/.terraform*
 terraform/client/eu/terraform*
@@ -19,6 +19,7 @@ terraform/server/terraform*
 terraform/session-manager-plugin*
 terraform/server/global/.terraform*
 terraform/server/global/terraform*
+terraform/server/eu-central-1/keys/cloudflare-hyperstore-private.pem
 terraform/server/eu-central-1/.terraform*
 terraform/server/eu-central-1/terraform*
 terraform/server/us-east-1/.terraform*
