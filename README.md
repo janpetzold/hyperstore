@@ -350,6 +350,21 @@ The domain hyperstore.cc was configured in Cloudflare with he following settings
 
 Also I added a WAF rule to block http traffic (field SSL/HTTPS to "off" and then block).
 
+# OAuth2
+
+Based on recent recommendation we want to use the "client_credentials" approach for API authentication. To do this we use Passport. Set this up via
+
+    composer require laravel/passport
+    php artisan migrate
+    php artisan passport:install --uuids
+    php artisan passport:client --personal
+
+This will result in a client ID/secret combination. We don't really have test users for now so just generate a valid access token using
+
+    curl --location 'http://127.0.0.1:8000/oauth/token' --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'grant_type=client_credentials' --data-urlencode 'client_id=CLIENT-ID' --data-urlencode 'client_secret=CLIENT-SECRET' --data-urlencode 'scope=read'
+
+To change stock just request a token using the "stock" scope, the default "read" scope won't suffice here.
+
 ## Performance history
 Over time different changes were applied with an impact on E2E performance. This is summarized here. Baseline is always the `/api/hyper` get call to retrieve the current amount of hyper.
 
@@ -360,6 +375,7 @@ Over time different changes were applied with an impact on E2E performance. This
 | Optimized/removed Laravel middleware | Ubuntu (WSL) | 680ms | 
 | Switch to FrankenPHP | Fargate | 50ms | 
 | Add HTTPS via Cloudflare | Fargate | 55ms | 
+| Protect API via Access token | Fargate | ? | 
 
 ## Todos & Known issues
 
@@ -391,5 +407,7 @@ Over time different changes were applied with an impact on E2E performance. This
 [ ] add resource groups in terraform
 [x] add load balancer to have a static IP
 [ ] setup real domain "hyperstore.cc" and link to EU/NAR/SA
-[ ] setup TLS
+[x] setup TLS
+[ ] Authenticate with test users instead of static client ID / client secret
+[ ] User actual Personal access tokens
 [ ] Refactor terraform structure with modules/scripts
