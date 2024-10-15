@@ -7,14 +7,17 @@ resource "aws_vpc" "main" {
 resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "10.0.0.0/24"
+  # Same availability zone is needed so NLB can find ECS
+  availability_zone       = "eu-central-1a"
   map_public_ip_on_launch = true
 }
 
-
-# Private Subnet needed for ECS Fargate
+# Private Subnet needed for ECS Fargate and Redis
 resource "aws_subnet" "private" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "10.0.1.0/24"
+  # Same availability zone is needed so NLB can find ECS
+  availability_zone       = "eu-central-1a"
   map_public_ip_on_launch = false
 }
 
@@ -124,6 +127,7 @@ resource "aws_cloudwatch_log_group" "hyperstore_logs" {
   retention_in_days = 30  # retention period
 }
 
+# ECS deployment task for docker container
 resource "aws_ecs_task_definition" "hyperstore_task" {
   family                   = "hyperstore-fargate-task"
   network_mode             = "awsvpc"
@@ -166,7 +170,7 @@ resource "aws_ecs_service" "hyperstore_service" {
   enable_execute_command = true
 
   network_configuration {
-    # ECS shall be in private Subnet together with Redis DB
+    # ECS shall be in private subnet together with Redis DB
     subnets         = [aws_subnet.private.id]
     security_groups = [aws_security_group.fargate_sg.id]
     assign_public_ip = false
@@ -184,11 +188,14 @@ resource "aws_lb" "hyperstore_nlb" {
   name               = "hyperstore-nlb"
   load_balancer_type = "network"
   security_groups    = [aws_security_group.fargate_sg.id]
+
   subnets            = [aws_subnet.public.id]
+
   internal           = false # Set to true if you want an internal ALB
 }
 
 # Network Load Balancer Listener on port 80 for HTTP
+# TODO: Do we still want/need this?
 resource "aws_lb_listener" "hyperstore_listener_http" {
   load_balancer_arn = aws_lb.hyperstore_nlb.arn
   port              = 80

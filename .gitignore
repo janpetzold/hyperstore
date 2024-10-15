@@ -19,6 +19,7 @@ terraform/server/terraform*
 terraform/session-manager-plugin*
 terraform/server/global/.terraform*
 terraform/server/global/terraform*
+terraform/server/eu-central-1/bastion-key.pem
 terraform/server/eu-central-1/keys/cloudflare-hyperstore-private.pem
 terraform/server/eu-central-1/.terraform*
 terraform/server/eu-central-1/terraform*

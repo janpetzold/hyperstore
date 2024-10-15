@@ -87,7 +87,7 @@ Before creation make sure to clear everything (see https://stackoverflow.com/a/6
     # TODO: add comment to clear laravel.log 
     php artisan config:clear
     php artisan cache:clear
-    # Optimization
+    php artisan route:clear
     php artisan optimize:clear
     composer dump-autoload --optimize
     # Cache config
@@ -193,25 +193,13 @@ For local development it is easiest to just install Redis via Linux/WSL
     redis-cli
     ping
 
-### Server
+### Database
 
-For now there is just a single DB instance in eu-central-1 that covers all global services.
+For now there is just a single DB instance in eu-central-1 that covers all global services. Also a local one can be used for simple testing/debugging, see above.
 
-The Redis DB is set up vi terraform just like all other resources. Publi internet access is not possible, therefore a Bastion jumphost is also set up. To connect to it run
+There is no Public IP or SSH for the Redis instance in the backend, therefore a Bastion host is created automatically. This was tested and works using Redis Isght, just refer to Bastion host IP and private key and connect shall work for all Redis DB interactions. The necessary key is created during each run in
 
-    terraform output
-
-and check the `ssh` command there. This tunnel can also be setup in [Medis](https://getmedis.com/) client.
-
-To use this with `redis-cli` locally port forwarding needs to be enabled. To do this run
-
-    ssh -i bastion_ssh_key.pem -L 6379:eu-redis-cluster.jks2ei.0001.euc1.cache.amazonaws.com:6379 ec2-user@3.72.75.155
-
-Replace Bastion host IP address and Cluster URL accordingly. Leave this command open. Now in another terminal just run
-
-    redis-cli
-
-where you can interact with the remote database.
+    /terraform/server/eu-central-1/bastion-key.pem
 
 ### Client
 
@@ -379,6 +367,30 @@ Over time different changes were applied with an impact on E2E performance. This
 
 ## Todos & Known issues
 
+### Open issues
+
+[ ] Modify locustfile.py so we have tests that actually make sense
+[ ] Find/add artisan script to switch environments
+[ ] Create proper build script
+[ ] setup AWS Parameter Store
+[ ] setup NAR based on EU
+[ ] setup SA based on EU
+[ ] Automate setting of Cloudflare CNAME record to NLB DNS name via terraform
+[ ] Generate system architecture based on Terraform files
+[ ] automatically set A record to (changing) Fargate IP via script
+[ ] .env file is part of Docker image. Seems to be needed for the app key. Remove .env from docker build and externalize these variables via AWS Systems Manager Parameter Store for sake of pricing / simplicity
+[ ] fix missing .env file for local docker image: must be there for local testing, must not be there for AWS
+[ ] Move Dockerfile out of api dir
+[ ] add resource groups in terraform
+[ ] setup real domain "hyperstore.cc" and link to EU
+[ ] setup real domain "hyperstore.cc" and link to NAR
+[ ] setup real domain "hyperstore.cc" and link to SA
+[ ] Authenticate with "real" test users instead of static client ID / client secret
+[ ] use actual Personal access tokens
+[ ] Refactor terraform structure with modules/scripts
+
+### Closed issues
+
 [x] Add AWS parameter store in terraform using values from .env
 [x] Add initial scripted client based on locust
 [x] Client shall not need public IP, SSH or other stuff > Public IP and Subnet are indeed needed for SSM, SSH is not
@@ -386,28 +398,14 @@ Over time different changes were applied with an impact on E2E performance. This
 [x] start client setup with 3 clients from EU via AMI predefined based on Locust
 [x] Update AMI so we can use a proper locust version 2.3*
 [x] setup Locust Master/Slave and read actual data via UI / file
-[ ] Modify locustfile.py so we have tests that actually make sense
 [x] Improve Redis DB connection, figure out how to measure this (Debugbar, Telescope)
-[ ] Find/add artisan script to switch environments
-[ ] Re-establish SSH access to Redis
-[ ] Add IdP for token-based authentication
+[x] Re-establish SSH access to Redis
+[x] Add IdP for token-based authentication > Passport
 [x] Add Octane for high-performance PHP serving
-[ ] setup AWS Parameter Store
-[ ] Automate setting of Cloudflare CNAME record to NLB DNS name via terraform
 [x] use custom Redis to speed up provisioning time
 [x] move everything to a private subnet instead of a public one
 [x] Improve DB performance (400ms is way too much) > Octane and logger optimization
-[ ] get rid of "static" Elastic IP for Redis for cost reasons (could be fixed via Parameter store)
-[ ] Generate system architecture based on Terraform files
-[ ] automatically set A record to (changing) Fargate IP via script
-[ ] .env file is part of Docker image. Seems to be needed for the app key. Remove .env from docker build and externalize these variables via AWS Systems Manager Parameter Store for sake of pricing / simplicity
-[ ] fix missing .env file for local docker image: must be there for local testing, must not be there for AWS
-[ ] Move Dockerfile out of api dir
+[x] get rid of "static" Elastic IP for Redis for cost reasons
 [-] add php-fpm and a "real" web server but make it work in the Docker container
-[ ] add resource groups in terraform
 [x] add load balancer to have a static IP
-[ ] setup real domain "hyperstore.cc" and link to EU/NAR/SA
 [x] setup TLS
-[ ] Authenticate with test users instead of static client ID / client secret
-[ ] User actual Personal access tokens
-[ ] Refactor terraform structure with modules/scripts
