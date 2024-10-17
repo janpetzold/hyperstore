@@ -1,7 +1,7 @@
 # This script creates the AWS parameter store based on our .env variable values
 # It basically reads the .env file and sets each line/value as a parameter.
 locals {
-  env_file_content = file("${path.module}/../../../hyperstore-api/.env")
+  env_file_content = file("${path.module}/../../../hyperstore-api/.env.production")
 
   # Split file content by newline. Ignore empty lines and line comments
   env_lines = [for line in split("\n", local.env_file_content) : line

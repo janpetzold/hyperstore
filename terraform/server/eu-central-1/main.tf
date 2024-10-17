@@ -9,6 +9,10 @@ terraform {
       source  = "hashicorp/tls"
       version = "~> 4.0"
     }
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 3.0"
+    }
   }
 }
 
@@ -17,7 +21,7 @@ provider "aws" {
   region = "eu-central-1"
 }
 
-# HTTP provider for IP resolution so local dev machine access is enabled
+# HTTP provider for IP resolution so local dev machine access can be enabled
 provider "http" {}
 data "http" "myip" {
   url = "http://ipv4.icanhazip.com"

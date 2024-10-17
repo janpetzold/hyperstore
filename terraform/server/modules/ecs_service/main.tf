@@ -195,7 +195,8 @@ resource "aws_lb" "hyperstore_nlb" {
 }
 
 # Network Load Balancer Listener on port 80 for HTTP
-# TODO: Do we still want/need this?
+# We mainly want this for test purposes to check the NLB directly, for production this has to be closed
+# however HTTPS only works via DNS
 resource "aws_lb_listener" "hyperstore_listener_http" {
   load_balancer_arn = aws_lb.hyperstore_nlb.arn
   port              = 80

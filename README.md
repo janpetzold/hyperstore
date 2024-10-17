@@ -155,7 +155,7 @@ Then do
     terraform init
     terraform apply
 
-To teardown everything (including history)
+To teardown everything
 
     terraform destroy
 
@@ -163,16 +163,22 @@ ECS task execution is enabled so if you need to SSH into the container do
 
     aws ecs execute-command --cluster hyperstore-cluster --task b12aef02a7a84346bff48ab6487a4ef7 --container hyperstore-app --interactive --command "/bin/bash"
 
-To find out the IP address of the recent task deployment do this - unfortunately this requires 3 steps
+Unfortunately this only worked sometimes, reason unclear.
 
-    # Get ARN for the latest taks
-    aws ecs list-tasks --cluster hyperstore-cluster
-    
-    # Extract network interface ID
-    aws ecs describe-tasks --cluster hyperstore-cluster --tasks d332c5e7942a43a2a437c15138b278e8 | grep eni
-    
-    # Take the network interface ID to get the public IP of the service
-    aws ec2 describe-network-interfaces --network-interface-ids eni-0f842741f2c157970 | grep PublicIp
+The terraform code does a lot, summarized briefly:
+
+- setup ECS and deploy recent "hyperstore" container from ECR and VPC + subnets needed
+- create Redis DB as EC2 instacne and jumphost for local access
+- setup AWS parameter store with mandatory runtime variables for ECS container
+- setup Cloudwatch
+- setup Network Load Balancer since ECS container and Redis are only in private network
+- set CNAME of domain hyperstore.cc after NLB was created (DNS changes every time)
+
+All sensible data is in terraform.tfvars file, this would be (region-specific)
+
+    cloudflare_email = "X"
+    cloudflare_api_key = "Y"
+    cloudflare_zone_id = "Z"
 
 ## Database
 
@@ -373,7 +379,6 @@ Over time different changes were applied with an impact on E2E performance. This
 [ ] Find/add artisan script to switch environments
 [ ] setup NAR based on EU
 [ ] setup SA based on EU
-[ ] Automate setting of Cloudflare CNAME record to NLB DNS name via terraform
 [ ] Generate system architecture based on Terraform files
 [ ] automatically set A record to (changing) Fargate IP via script
 [ ] Move Dockerfile out of api dir
@@ -383,7 +388,8 @@ Over time different changes were applied with an impact on E2E performance. This
 [ ] setup real domain "hyperstore.cc" and link to SA
 [ ] Authenticate with "real" test users instead of static client ID / client secret (use actual Personal Access Tokens)
 [ ] Refactor terraform structure with modules/scripts
-[ ] Re-verify telescope
+[ ] Re-verify telescope (seems broken, worked before, likely due to SQLite)
+[ ] Improve Cloudflare NLB TLS encryption "flexible"
 
 ### Closed issues
 
@@ -408,3 +414,4 @@ Over time different changes were applied with an impact on E2E performance. This
 [x] .env file is part of Docker image
 [x] Create proper build script
 [x] setup AWS Parameter Store
+[x] Automate setting of Cloudflare CNAME record to NLB DNS name via terraform
