@@ -9,6 +9,7 @@ hyperstore-api/public/storage
 hyperstore-api/storage/*.key
 hyperstore-api/vendor
 hyperstore-api/.env
+hyperstore-api/.env.production
 hyperstore-api/.phpunit.result.cache
 hyperstore-api/telescope/db.sqlite
 terraform/.terraform

@@ -371,23 +371,19 @@ Over time different changes were applied with an impact on E2E performance. This
 
 [ ] Modify locustfile.py so we have tests that actually make sense
 [ ] Find/add artisan script to switch environments
-[ ] Create proper build script
-[ ] setup AWS Parameter Store
 [ ] setup NAR based on EU
 [ ] setup SA based on EU
 [ ] Automate setting of Cloudflare CNAME record to NLB DNS name via terraform
 [ ] Generate system architecture based on Terraform files
 [ ] automatically set A record to (changing) Fargate IP via script
-[ ] .env file is part of Docker image. Seems to be needed for the app key. Remove .env from docker build and externalize these variables via AWS Systems Manager Parameter Store for sake of pricing / simplicity
-[ ] fix missing .env file for local docker image: must be there for local testing, must not be there for AWS
 [ ] Move Dockerfile out of api dir
 [ ] add resource groups in terraform
 [ ] setup real domain "hyperstore.cc" and link to EU
 [ ] setup real domain "hyperstore.cc" and link to NAR
 [ ] setup real domain "hyperstore.cc" and link to SA
-[ ] Authenticate with "real" test users instead of static client ID / client secret
-[ ] use actual Personal access tokens
+[ ] Authenticate with "real" test users instead of static client ID / client secret (use actual Personal Access Tokens)
 [ ] Refactor terraform structure with modules/scripts
+[ ] Re-verify telescope
 
 ### Closed issues
 
@@ -409,3 +405,6 @@ Over time different changes were applied with an impact on E2E performance. This
 [-] add php-fpm and a "real" web server but make it work in the Docker container
 [x] add load balancer to have a static IP
 [x] setup TLS
+[x] .env file is part of Docker image
+[x] Create proper build script
+[x] setup AWS Parameter Store
