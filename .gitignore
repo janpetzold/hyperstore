@@ -14,6 +14,8 @@ hyperstore-api/.phpunit.result.cache
 hyperstore-api/telescope/db.sqlite
 terraform/.terraform
 terraform/client/terraform*
+terraform/client/__pycache__
+terraform/client/.env
 terraform/client/eu/.terraform*
 terraform/client/eu/terraform*
 terraform/server/terraform*

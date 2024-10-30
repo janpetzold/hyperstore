@@ -209,11 +209,28 @@ There is no Public IP or SSH for the Redis instance in the backend, therefore a 
 
 ### Client
 
-The clients use locust as test framework. Locust is pre-installed on the AMI-based VMs (EC2 Nano instance). Essentially this is just an Ubuntu LTS machine with the following setup:
+The clients use [locust](https://locust.io/) as test framework. 
+
+#### Local testing
+
+To generate load from local machine just create the `locustfile.py` and install locust as follows
+
+    pip3 install locust
+
+Start this then via
+
+    locust -f locustfile.py --host=https://hyperstore.cc
+
+and open browser at http://localhost:8089.
+
+#### Testing with multiple clients in the Cloud
+
+Locust is pre-installed on the AMI-based VMs (EC2 Nano instance). Essentially this is just an Ubuntu LTS machine with the following setup:
 
     sudo apt-get update
     sudo apt-get upgrade
     sudo apt-get install python3-pip
+    pip3 install dotenv
     pip3 install locust --break-system-packages
     wget https://raw.githubusercontent.com/janpetzold/hyperstore/refs/heads/main/terraform/client/locustfile.py -O /home/ubuntu/locustfile.py
     # Add path to ~/.bashrc
@@ -279,7 +296,7 @@ public_ip_eu_west_2 = "35.177.215.178"
 
 #### Load test update
 
-Now it may be desired to replace the deafult load script with a custom one. See `locustfile.py` on what is currently used. To replace that without opening another port SSM can also be used, it is not very elegant but essentially we encode the file to Base64 here and "upload" it via echo command which works reliably (at least whenf ile is in kByte range).
+Now it may be desired to replace the default load script with a custom one. See `locustfile.py` on what is currently used. To replace that without opening another port SSM can also be used, it is not very elegant but essentially we encode the file to Base64 here and "upload" it via echo command which works reliably (at least when file is in kByte range).
 
     base64_loadtest=$(base64 -w 0 locustfile.py)
     echo $base64_loadtest
@@ -375,12 +392,11 @@ Over time different changes were applied with an impact on E2E performance. This
 
 ### Open issues
 
-[ ] Modify locustfile.py so we have tests that actually make sense
+[ ] Update AMI and make sure .env works in client EC2 instances
 [ ] Find/add artisan script to switch environments
 [ ] setup NAR based on EU
 [ ] setup SA based on EU
 [ ] Generate system architecture based on Terraform files
-[ ] automatically set A record to (changing) Fargate IP via script
 [ ] Move Dockerfile out of api dir
 [ ] add resource groups in terraform
 [ ] setup real domain "hyperstore.cc" and link to EU
@@ -415,3 +431,4 @@ Over time different changes were applied with an impact on E2E performance. This
 [x] Create proper build script
 [x] setup AWS Parameter Store
 [x] Automate setting of Cloudflare CNAME record to NLB DNS name via terraform
+[x] Modify locustfile.py so we have tests that actually make sense
