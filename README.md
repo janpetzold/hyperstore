@@ -2,6 +2,14 @@
 
 This is a virtual store that only exists to test scalability & IaC based on Laravel, AWS and Terraform.
 
+# Architecture
+
+Essentially the system design looks like this
+
+![Hyperstore architecture](images/architecture.png)
+
+So there are three client machines in separate regions. The main backend is based on ECS/Fargate with a Redis database. All traffic is terminated at the respective Network Load Balancer.
+
 ## Setup
 
 This project is based on Laravel. To get started do a 
@@ -396,7 +404,6 @@ Over time different changes were applied with an impact on E2E performance. This
 [ ] Find/add artisan script to switch environments
 [ ] setup NAR based on EU
 [ ] setup SA based on EU
-[ ] Generate system architecture based on Terraform files
 [ ] Move Dockerfile out of api dir
 [ ] add resource groups in terraform
 [ ] setup real domain "hyperstore.cc" and link to EU
@@ -432,3 +439,4 @@ Over time different changes were applied with an impact on E2E performance. This
 [x] setup AWS Parameter Store
 [x] Automate setting of Cloudflare CNAME record to NLB DNS name via terraform
 [x] Modify locustfile.py so we have tests that actually make sense
+[x] Generate system architecture overview > Cloudcraft

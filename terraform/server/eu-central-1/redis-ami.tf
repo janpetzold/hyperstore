@@ -90,7 +90,7 @@ resource "aws_security_group" "bastion_sg" {
 # EC2 definition of Bastion host
 resource "aws_instance" "bastion_host" {
   ami           = "ami-0c68c16f694e0e248" # Ubuntu 22.04 LTS
-  instance_type = "t2.micro"
+  instance_type = "t3.nano"
   subnet_id     = module.ecs_service.public_subnet_id
   associate_public_ip_address = true
 
