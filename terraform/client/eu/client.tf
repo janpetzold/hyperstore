@@ -50,7 +50,7 @@ module "ec2_instance_eu_central_1" {
   subnet_id = module.vpc_eu_central_1.subnet_ids[0]
   instance_profile_name = aws_iam_instance_profile.instance.name
   region_name = "eu-central-1"
-  ami_id = "ami-0fab6653f0bd437c0"  # AMI ID for eu-central-1
+  ami_id = "ami-053de7e105575c821"  # AMI ID for eu-central-1
   vpc_id = module.vpc_eu_central_1.vpc_id
 }
 
@@ -62,7 +62,7 @@ module "ec2_instance_eu_north_1" {
   subnet_id = module.vpc_eu_north_1.subnet_ids[0]
   instance_profile_name = aws_iam_instance_profile.instance.name
   region_name = "eu-north-1"
-  ami_id = "ami-07770aed8130589ff"  # AMI ID for eu-north-1
+  ami_id = "ami-0d8bfce8c1bd326b2"  # AMI ID for eu-north-1
   vpc_id = module.vpc_eu_north_1.vpc_id
 }
 
@@ -74,7 +74,7 @@ module "ec2_instance_eu_west_2" {
   subnet_id = module.vpc_eu_west_2.subnet_ids[0]
   instance_profile_name = aws_iam_instance_profile.instance.name
   region_name = "eu-west-2"
-  ami_id = "ami-0a63027f8a02ac374"  # AMI ID for eu-west-2
+  ami_id = "ami-015d10a498af6a59d"  # AMI ID for eu-west-2
   vpc_id = module.vpc_eu_west_2.vpc_id
 }
 

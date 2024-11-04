@@ -19,6 +19,9 @@ class RouteServiceProvider extends ServiceProvider
      */
     public const HOME = '/home';
 
+    // Custom rate limit, needed both for our API and also OAuth endpoints
+    public const RATE_LIMIT_PER_MINUTE = 6000;
+
     /**
      * Define your route model bindings, pattern filters, and other route configuration.
      */
@@ -26,7 +29,7 @@ class RouteServiceProvider extends ServiceProvider
     {
         RateLimiter::for('api', function (Request $request) {
             // This limit is higher than the default of 60 requests/minute
-            return Limit::perMinute(600)->by($request->user()?->id ?: $request->ip());
+            return Limit::perMinute(self::RATE_LIMIT_PER_MINUTE)->by($request->user()?->id ?: $request->ip());
         });
 
         $this->routes(function () {
@@ -36,6 +39,30 @@ class RouteServiceProvider extends ServiceProvider
 
             //Route::middleware('web')
             //    ->group(base_path('routes/web.php'));
+
+            // Register Passport routes for custom rate limiting
+            Route::group(['prefix' => 'oauth'], function () {
+                
+                Route::post('/token', [
+                    'uses' => '\Laravel\Passport\Http\Controllers\AccessTokenController@issueToken',
+                    'middleware' => 'throttle:' . self::RATE_LIMIT_PER_MINUTE . ',1',
+                ]);
+
+                Route::get('/tokens', [
+                    'uses' => '\Laravel\Passport\Http\Controllers\AuthorizedAccessTokenController@forUser',
+                    'middleware' => ['auth:api', 'scopes:read'],
+                ]);
+
+                Route::delete('/tokens/{token_id}', [
+                    'uses' => '\Laravel\Passport\Http\Controllers\AuthorizedAccessTokenController@destroy',
+                    'middleware' => ['auth:api', 'scopes:read'],
+                ]);
+
+                Route::post('/token/refresh', [
+                    'uses' => '\Laravel\Passport\Http\Controllers\TransientTokenController@refresh',
+                    'middleware' => ['auth:api', 'scopes:read'],
+                ]);
+            });
         });
     }
 }

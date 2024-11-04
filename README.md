@@ -238,14 +238,21 @@ Locust is pre-installed on the AMI-based VMs (EC2 Nano instance). Essentially th
     sudo apt-get update
     sudo apt-get upgrade
     sudo apt-get install python3-pip
-    pip3 install dotenv
-    pip3 install locust --break-system-packages
+    sudo apt-get install python3-locust
+
+    pip3 install locust --break-system-packages --ignore-installed
+    sudo pip3 install locust --break-system-packages --ignore-installed
+
+    pip3 install python-dotenv --break-system-packages
+    sudo pip3 install python-dotenv --break-system-packages
+
+    # Get current benchmark file
     wget https://raw.githubusercontent.com/janpetzold/hyperstore/refs/heads/main/terraform/client/locustfile.py -O /home/ubuntu/locustfile.py
-    # Add path to ~/.bashrc
-    export PATH="$PATH:/home/ubuntu/.local/bin"
-    source ~/.bashrc
+    
     # Then assign proper AMI role AmazonSSMManagedInstanceCore and restart service
     sudo systemctl restart snap.amazon-ssm-agent.amazon-ssm-agent.service
+
+I also tried `user_data` scripts but this was pretty unreliable so I went with AMIs.
 
 Amazon SSM agent was available out of the box using the AWS Ubuntu image:
 
@@ -254,28 +261,35 @@ Amazon SSM agent was available out of the box using the AWS Ubuntu image:
 The AMI is zone-specific so it needs to be copied to all the regions/zones we care about:
 
     # Source Frankfurt, Target Stockholm
-    aws ec2 copy-image --source-image-id ami-0fab6653f0bd437c0 --source-region eu-central-1 --region eu-north-1 --name "Hyperstore Locust Client" --description "Locust client AMI for benchmarking Hyperstore for eu-north-1"
+    aws ec2 copy-image --source-image-id ami-053de7e105575c821 --source-region eu-central-1 --region eu-north-1 --name "Hyperstore Locust Client" --description "Locust client AMI for benchmarking Hyperstore for eu-north-1"
     # Source Frankfurt, Target London
-    aws ec2 copy-image --source-image-id ami-0fab6653f0bd437c0 --source-region eu-central-1 --region eu-west-2 --name "Hyperstore Locust Client" --description "Locust client AMI for benchmarking Hyperstore for eu-west-2"
+    aws ec2 copy-image --source-image-id ami-053de7e105575c821 --source-region eu-central-1 --region eu-west-2 --name "Hyperstore Locust Client" --description "Locust client AMI for benchmarking Hyperstore for eu-west-2"
 
 For now the AMI IDs were as follows
 
-eu-central-1: ami-0fab6653f0bd437c0
-eu-north-1: ami-07770aed8130589ff
-eu-west-2: ami-0a63027f8a02ac374
+eu-central-1: ami-053de7e105575c821
+eu-north-1: ami-0d8bfce8c1bd326b2
+eu-west-2: ami-015d10a498af6a59d
 
-I also tried `user_data` scripts but this was pretty unreliable so I went with AMIs.
+If you launch these clients via `terraform apply` the instance ID shall be printed to the command-line like
+
+instance_id_eu_central_1 = "i-0bfdf59b0a98dc83d"
+instance_id_eu_north_1 = "i-0a57efcaac1fb5c80"
+instance_id_eu_west_2 = "i-07c16871063269aae"
+public_ip_eu_central_1 = "3.125.4.94"
+public_ip_eu_north_1 = "13.60.68.145"
+public_ip_eu_west_2 = "18.130.98.139"
 
 To run the "default" load test just the host needs to be supplied via AWS SSM like this:
 
     # Frankfurt node as master 
-    aws ssm send-command --region eu-central-1 --document-name "AWS-RunShellScript" --targets "Key=instanceids,Values=i-0d58a8a61174121c1" --parameters 'commands=["cd /home/ubuntu", "locust --master"]'
+    aws ssm send-command --region eu-central-1 --document-name "AWS-RunShellScript" --targets "Key=instanceids,Values=i-0bfdf59b0a98dc83d" --parameters 'commands=["cd /home/ubuntu", "/home/ubuntu/.local/bin/locust --master"]'
 
-    # London is worker #1
-    aws ssm send-command --region eu-west-2 --document-name "AWS-RunShellScript" --targets "Key=instanceids,Values=i-06590cbc8df5bda27" --parameters 'commands=["cd /home/ubuntu", "locust --worker --master-host=3.75.85.87"]'
+    # Stockholm is worker #1
+    aws ssm send-command --region eu-north-1 --document-name "AWS-RunShellScript" --targets "Key=instanceids,Values=i-0a57efcaac1fb5c80" --parameters 'commands=["cd /home/ubuntu", "/home/ubuntu/.local/bin/locust --worker --master-host=3.125.4.94"]'
 
-    # Stockholm is worker #2
-    aws ssm send-command --region eu-north-1 --document-name "AWS-RunShellScript" --targets "Key=instanceids,Values=i-0be0cba45a6e15e08" --parameters 'commands=["cd /home/ubuntu", "locust --worker --master-host=3.75.85.87"]'
+    # London is worker #2
+    aws ssm send-command --region eu-west-2 --document-name "AWS-RunShellScript" --targets "Key=instanceids,Values=i-07c16871063269aae" --parameters 'commands=["cd /home/ubuntu", "/home/ubuntu/.local/bin/locust --worker --master-host=3.125.4.94"]'
 
 Check execution at
 
@@ -285,7 +299,7 @@ https://eu-central-1.console.aws.amazon.com/systems-manager/run-command
 
 By default Locust offers a UI at port 8089 but we don't need to open this one since it would be publically available. Instead fo this we forward the port to our local machine:
 
-    aws ssm start-session --target i-0d58a8a61174121c1 --document-name AWS-StartPortForwardingSession --parameters '{"portNumber":["8089"],"localPortNumber":["8089"]}'
+    aws ssm start-session --target i-0bfdf59b0a98dc83d --document-name AWS-StartPortForwardingSession --parameters '{"portNumber":["8089"],"localPortNumber":["8089"]}'
 
 and can open the UI then via
 
@@ -295,21 +309,27 @@ In there you can set up the actual load test parameters (number of users, spawn 
 
 ![Locust sample view](images/locust-sample.png)
 
-instance_id_eu_central_1 = "i-0b35666114424c89a"
-instance_id_eu_north_1 = "i-03ad18ce2f9efbdd2"
-instance_id_eu_west_2 = "i-026dfce053c37f11e"
-public_ip_eu_central_1 = "3.73.132.210"
-public_ip_eu_north_1 = "16.170.163.218"
-public_ip_eu_west_2 = "35.177.215.178"
-
 #### Load test update
 
 Now it may be desired to replace the default load script with a custom one. See `locustfile.py` on what is currently used. To replace that without opening another port SSM can also be used, it is not very elegant but essentially we encode the file to Base64 here and "upload" it via echo command which works reliably (at least when file is in kByte range).
 
-    base64_loadtest=$(base64 -w 0 locustfile.py)
-    echo $base64_loadtest
+The same has to be done to .env file which contains the OAuth credentials and is needed so that the client can access the APIs.
 
-    aws ssm send-command --instance-ids "i-0f2c1281ce6b4f466" --document-name "AWS-RunShellScript" --parameters "commands=[\"echo '$base64_loadtest' | base64 -d > /home/ubuntu/locustfile.py\"]"  --output text
+    # Run this in the directory of locustfile.py
+    base64_env=$(base64 -w 0 .env)
+    base64_loadtest=$(base64 -w 0 locustfile.py)
+
+    # eu-central-1
+    aws ssm send-command --region eu-central-1 --instance-ids "i-0bfdf59b0a98dc83d" --document-name "AWS-RunShellScript" --parameters "commands=[\"echo '$base64_loadtest' | base64 -d > /home/ubuntu/locustfile.py\"]"  --output text
+    aws ssm send-command --region eu-central-1 --instance-ids "i-0bfdf59b0a98dc83d" --document-name "AWS-RunShellScript" --parameters "commands=[\"echo '$base64_env' | base64 -d > /home/ubuntu/.env\"]"  --output text
+
+    # eu-north-1
+    aws ssm send-command --region eu-north-1 --instance-ids "i-0a57efcaac1fb5c80" --document-name "AWS-RunShellScript" --parameters "commands=[\"echo '$base64_loadtest' | base64 -d > /home/ubuntu/locustfile.py\"]"  --output text
+    aws ssm send-command --region eu-north-1 --instance-ids "i-0a57efcaac1fb5c80" --document-name "AWS-RunShellScript" --parameters "commands=[\"echo '$base64_env' | base64 -d > /home/ubuntu/.env\"]"  --output text
+
+    # eu-west-2
+    aws ssm send-command --region eu-west-2 --instance-ids "i-07c16871063269aae" --document-name "AWS-RunShellScript" --parameters "commands=[\"echo '$base64_loadtest' | base64 -d > /home/ubuntu/locustfile.py\"]"  --output text
+    aws ssm send-command --region eu-west-2 --instance-ids "i-07c16871063269aae" --document-name "AWS-RunShellScript" --parameters "commands=[\"echo '$base64_env' | base64 -d > /home/ubuntu/.env\"]"  --output text
 
 Make sure to execute this in the directory where `locustfile.py` is.
 
@@ -394,13 +414,23 @@ Over time different changes were applied with an impact on E2E performance. This
 | Optimized/removed Laravel middleware | Ubuntu (WSL) | 680ms | 
 | Switch to FrankenPHP | Fargate | 50ms | 
 | Add HTTPS via Cloudflare | Fargate | 55ms | 
-| Protect API via Access token | Fargate | ? | 
+| Protect API via Access token | Fargate | ? |
+| Enable Opcache | Fargate | ? | 
+
+## Findings
+Rate limiting needs to be increased (default 60 requests/minute) even though we have multiple workers
+
+Lowest ECS instance ~$10/month (0.25 CPU, 0.5GB RAM) with good response times and no errors for 20 concurrent users, 22% errors for 100 concurrent users and very slow response times. CPU was the limiting factor all the time. Redis CPU load was barely measurable (2% max).
+
+Raising this to 3rd best option (1 CPU, 2GB RAM) increases costs to ~$40/month.
+
+Simulating 50 concurrent clients on a wokrer node caused a max CPU load of ~20% on t3.nano.
 
 ## Todos & Known issues
 
 ### Open issues
 
-[ ] Update AMI and make sure .env works in client EC2 instances
+[ ] Check opcache enabling: php -i | grep opcache
 [ ] Find/add artisan script to switch environments
 [ ] setup NAR based on EU
 [ ] setup SA based on EU
@@ -440,3 +470,4 @@ Over time different changes were applied with an impact on E2E performance. This
 [x] Automate setting of Cloudflare CNAME record to NLB DNS name via terraform
 [x] Modify locustfile.py so we have tests that actually make sense
 [x] Generate system architecture overview > Cloudcraft
+[x] Fix 429 for /oauth/token

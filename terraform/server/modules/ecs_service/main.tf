@@ -132,8 +132,8 @@ resource "aws_ecs_task_definition" "hyperstore_task" {
   family                   = "hyperstore-fargate-task"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = "256"
-  memory                   = "512"
+  cpu                      = "1024"
+  memory                   = "2048"
 
   container_definitions = jsonencode([{
     name  = "hyperstore-app"
