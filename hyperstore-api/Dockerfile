@@ -1,7 +1,7 @@
 FROM dunglas/frankenphp
  
 RUN install-php-extensions \
-    pcntl xml curl redis sqlite3
+    pcntl xml curl redis sqlite3 opcache
  
 COPY . .
 
@@ -10,6 +10,9 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 # Install all project dependencies
 RUN composer install
+
+# Configure OPcache (optional)
+COPY opcache.ini /usr/local/etc/php/conf.d/opcache.ini
 
 # TODO: All steps in here, can this be improved? I mean, it works...
 #

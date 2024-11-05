@@ -410,12 +410,13 @@ Over time different changes were applied with an impact on E2E performance. This
 | Action / Change | Environment | Response time |
 | --- | --- | --- |
 | Baseline, no optimization (`php artisan serve`) | Ubuntu (WSL) | 700ms | 
-| Baseline, no optimization (`php artisan serve`) | Fargate | 500ms | 
 | Optimized/removed Laravel middleware | Ubuntu (WSL) | 680ms | 
+| Baseline, opcache enabled (`php artisan serve`) | Ubuntu (WSL) | 250ms | 
+| Baseline, no optimization (`php artisan serve`) | Fargate | 500ms | 
 | Switch to FrankenPHP | Fargate | 50ms | 
 | Add HTTPS via Cloudflare | Fargate | 55ms | 
-| Protect API via Access token | Fargate | ? |
-| Enable Opcache | Fargate | ? | 
+| Protect API via Access token | Fargate | 55ms |
+| Enable Opcache | Fargate | 50ms | 
 
 ## Findings
 Rate limiting needs to be increased (default 60 requests/minute) even though we have multiple workers
@@ -430,7 +431,7 @@ Simulating 50 concurrent clients on a wokrer node caused a max CPU load of ~20% 
 
 ### Open issues
 
-[ ] Check opcache enabling: php -i | grep opcache
+[ ] Increase # of clients to 1000 parallel users (should be feasible with 10 workers)
 [ ] Find/add artisan script to switch environments
 [ ] setup NAR based on EU
 [ ] setup SA based on EU
@@ -471,3 +472,4 @@ Simulating 50 concurrent clients on a wokrer node caused a max CPU load of ~20% 
 [x] Modify locustfile.py so we have tests that actually make sense
 [x] Generate system architecture overview > Cloudcraft
 [x] Fix 429 for /oauth/token
+[x] Enable opcache
