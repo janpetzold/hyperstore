@@ -2,6 +2,8 @@
 
 This is a virtual store that only exists to test scalability & IaC based on Laravel, AWS and Terraform.
 
+Motivation is to have a fully IaC system that supports 1000 concurrent users in a realistic setup (multiple clients spread across regions). The goal is also to identify real-world costs of such an environment and toa chieve decent response times for read & write operations.
+
 # Architecture
 
 Essentially the system design looks like this
@@ -233,17 +235,12 @@ and open browser at http://localhost:8089.
 
 #### Testing with multiple clients in the Cloud
 
-Locust is pre-installed on the AMI-based VMs (EC2 Nano instance). Essentially this is just an Ubuntu LTS machine with the following setup:
+Locust is pre-installed on the AMI-based VMs (EC2 Nano instance). Essentially this is just an Ubuntu LTS machine. Make sure to enable SSM by defining a role (e.g. hyperstore-ssm). Otherwise this is the setup after boot:
 
     sudo apt-get update
     sudo apt-get upgrade
     sudo apt-get install python3-pip
-    sudo apt-get install python3-locust
-
-    pip3 install locust --break-system-packages --ignore-installed
     sudo pip3 install locust --break-system-packages --ignore-installed
-
-    pip3 install python-dotenv --break-system-packages
     sudo pip3 install python-dotenv --break-system-packages
 
     # Get current benchmark file
@@ -261,35 +258,28 @@ Amazon SSM agent was available out of the box using the AWS Ubuntu image:
 The AMI is zone-specific so it needs to be copied to all the regions/zones we care about:
 
     # Source Frankfurt, Target Stockholm
-    aws ec2 copy-image --source-image-id ami-053de7e105575c821 --source-region eu-central-1 --region eu-north-1 --name "Hyperstore Locust Client" --description "Locust client AMI for benchmarking Hyperstore for eu-north-1"
+    aws ec2 copy-image --source-image-id ami-0d3276b7bee963d0b --source-region eu-central-1 --region eu-north-1 --name "Hyperstore Locust Client" --description "Locust client AMI for benchmarking Hyperstore for eu-north-1"
     # Source Frankfurt, Target London
-    aws ec2 copy-image --source-image-id ami-053de7e105575c821 --source-region eu-central-1 --region eu-west-2 --name "Hyperstore Locust Client" --description "Locust client AMI for benchmarking Hyperstore for eu-west-2"
+    aws ec2 copy-image --source-image-id ami-0d3276b7bee963d0b --source-region eu-central-1 --region eu-west-2 --name "Hyperstore Locust Client" --description "Locust client AMI for benchmarking Hyperstore for eu-west-2"
 
 For now the AMI IDs were as follows
 
-eu-central-1: ami-053de7e105575c821
-eu-north-1: ami-0d8bfce8c1bd326b2
-eu-west-2: ami-015d10a498af6a59d
+    eu-central-1: ami-0d3276b7bee963d0b
+    eu-north-1: ami-08535198e6033a45a
+    eu-west-2: ami-04b4db0aa8f2c5c7a
 
-If you launch these clients via `terraform apply` the instance ID shall be printed to the command-line like
-
-instance_id_eu_central_1 = "i-0bfdf59b0a98dc83d"
-instance_id_eu_north_1 = "i-0a57efcaac1fb5c80"
-instance_id_eu_west_2 = "i-07c16871063269aae"
-public_ip_eu_central_1 = "3.125.4.94"
-public_ip_eu_north_1 = "13.60.68.145"
-public_ip_eu_west_2 = "18.130.98.139"
+If you launch these clients via `terraform apply` the instance ID shall be printed to the command-line.
 
 To run the "default" load test just the host needs to be supplied via AWS SSM like this:
 
     # Frankfurt node as master 
-    aws ssm send-command --region eu-central-1 --document-name "AWS-RunShellScript" --targets "Key=instanceids,Values=i-0bfdf59b0a98dc83d" --parameters 'commands=["cd /home/ubuntu", "/home/ubuntu/.local/bin/locust --master"]'
+    aws ssm send-command --region eu-central-1 --document-name "AWS-RunShellScript" --targets "Key=instanceids,Values=i-0bfdf59b0a98dc83d" --parameters 'commands=["cd /home/ubuntu", "locust --master"]'
 
     # Stockholm is worker #1
-    aws ssm send-command --region eu-north-1 --document-name "AWS-RunShellScript" --targets "Key=instanceids,Values=i-0a57efcaac1fb5c80" --parameters 'commands=["cd /home/ubuntu", "/home/ubuntu/.local/bin/locust --worker --master-host=3.125.4.94"]'
+    aws ssm send-command --region eu-north-1 --document-name "AWS-RunShellScript" --targets "Key=instanceids,Values=i-0a57efcaac1fb5c80" --parameters 'commands=["cd /home/ubuntu", "locust --worker --master-host=3.125.4.94"]'
 
     # London is worker #2
-    aws ssm send-command --region eu-west-2 --document-name "AWS-RunShellScript" --targets "Key=instanceids,Values=i-07c16871063269aae" --parameters 'commands=["cd /home/ubuntu", "/home/ubuntu/.local/bin/locust --worker --master-host=3.125.4.94"]'
+    aws ssm send-command --region eu-west-2 --document-name "AWS-RunShellScript" --targets "Key=instanceids,Values=i-07c16871063269aae" --parameters 'commands=["cd /home/ubuntu", "locust --worker --master-host=3.125.4.94"]'
 
 Check execution at
 
@@ -323,15 +313,29 @@ The same has to be done to .env file which contains the OAuth credentials and is
     aws ssm send-command --region eu-central-1 --instance-ids "i-0bfdf59b0a98dc83d" --document-name "AWS-RunShellScript" --parameters "commands=[\"echo '$base64_loadtest' | base64 -d > /home/ubuntu/locustfile.py\"]"  --output text
     aws ssm send-command --region eu-central-1 --instance-ids "i-0bfdf59b0a98dc83d" --document-name "AWS-RunShellScript" --parameters "commands=[\"echo '$base64_env' | base64 -d > /home/ubuntu/.env\"]"  --output text
 
-    # eu-north-1
-    aws ssm send-command --region eu-north-1 --instance-ids "i-0a57efcaac1fb5c80" --document-name "AWS-RunShellScript" --parameters "commands=[\"echo '$base64_loadtest' | base64 -d > /home/ubuntu/locustfile.py\"]"  --output text
-    aws ssm send-command --region eu-north-1 --instance-ids "i-0a57efcaac1fb5c80" --document-name "AWS-RunShellScript" --parameters "commands=[\"echo '$base64_env' | base64 -d > /home/ubuntu/.env\"]"  --output text
-
-    # eu-west-2
-    aws ssm send-command --region eu-west-2 --instance-ids "i-07c16871063269aae" --document-name "AWS-RunShellScript" --parameters "commands=[\"echo '$base64_loadtest' | base64 -d > /home/ubuntu/locustfile.py\"]"  --output text
-    aws ssm send-command --region eu-west-2 --instance-ids "i-07c16871063269aae" --document-name "AWS-RunShellScript" --parameters "commands=[\"echo '$base64_env' | base64 -d > /home/ubuntu/.env\"]"  --output text
-
 Make sure to execute this in the directory where `locustfile.py` is.
+
+#### Sync workers via artisan
+
+To simplify provisioning all workers (currently 12 EC2 instances) with the load test and credentials an artisan task was created. 
+
+    composer create-project laravel/laravel worker-sync
+    composer remove laravel/sanctum laravel/tinker laravel/ui fakerphp/faker laravel/pail laravel/pint laravel/sail mockery/mockery nunomaduro/collision phpunit/phpunit
+    composer require aws/aws-sdk-php
+
+To run this just do
+    cd ../worker-sync
+    php artisan app:sync-hyperstore-load-test-to-workers
+
+#### Run master and workers via artisan
+
+If provisioning is complete start the entire client setup via
+
+    php artisan app:start-master-and-workers
+
+The load test can also be started from master node via
+
+    locust -f locustfile.py --headless --master --expect-workers 11 -u 1000 -r 1 --run-time 10m --host https://hyperstore.cc
 
 ## Debugging
 
@@ -425,13 +429,26 @@ Lowest ECS instance ~$10/month (0.25 CPU, 0.5GB RAM) with good response times an
 
 Raising this to 3rd best option (1 CPU, 2GB RAM) increases costs to ~$40/month.
 
-Simulating 50 concurrent clients on a wokrer node caused a max CPU load of ~20% on t3.nano.
+Simulating 50 concurrent users on a worker node caused a max CPU load of ~20% on t3.nano.
+
+Simulating 1000 concurrent users from 11 workers with ECS task 1024 CPU / 2048 memory led to the following results (10min execution time):
+
+| Type | Name | # reqs | # fails | Avg | Min | Max | Med | req/s | failures/s |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| GET | /api/hyper | 44861 | 3213 (7.16%) | 1260 | 16 | 3794 | 1100 | 74.76 | 5.35 |
+| POST | /api/hyper | 3437 | 260 (7.56%) | 1288 | 18 | 3518 | 1200 | 5.73 | 0.43 |
+| PUT | /api/hyper/own | 7303 | 496 (6.79%) | 1280 | 18 | 3766 | 1200 | 12.17 | 0.83 |
+| POST | /oauth/token | 7452 | 0 (0.00%) | 1290 | 27 | 4404 | 1200 | 12.42 | 0.00 |
+| Aggregated | | 63053 | 3969 (6.29%) | 1267 | 16 | 4404 | 1100 | 105.08 | 6.61 |
+
+This reached 100% CPU load, 7% memory load. Redis DB CPU was at 26% max.
 
 ## Todos & Known issues
 
 ### Open issues
 
 [ ] Increase # of clients to 1000 parallel users (should be feasible with 10 workers)
+[ ] improve client.tf which is currently very repetitive
 [ ] Find/add artisan script to switch environments
 [ ] setup NAR based on EU
 [ ] setup SA based on EU
@@ -473,3 +490,4 @@ Simulating 50 concurrent clients on a wokrer node caused a max CPU load of ~20% 
 [x] Generate system architecture overview > Cloudcraft
 [x] Fix 429 for /oauth/token
 [x] Enable opcache
+[x] Create artisan task to automatically provision the clients with the credentials and current load test file
