@@ -20,7 +20,7 @@ class RouteServiceProvider extends ServiceProvider
     public const HOME = '/home';
 
     // Custom rate limit, needed both for our API and also OAuth endpoints
-    public const RATE_LIMIT_PER_MINUTE = 6000;
+    public const RATE_LIMIT_PER_MINUTE = 60000;
 
     /**
      * Define your route model bindings, pattern filters, and other route configuration.

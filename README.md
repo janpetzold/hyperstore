@@ -4,6 +4,48 @@ This is a virtual store that only exists to test scalability & IaC based on Lara
 
 Motivation is to have a fully IaC system that supports 1000 concurrent users in a realistic setup (multiple clients spread across regions). The goal is also to identify real-world costs of such an environment and toa chieve decent response times for read & write operations.
 
+# Quick start
+
+To set everything up and run the load test do as follwos after checkout.
+
+First configure the environment properties
+
+    hyperstore-api/.env
+    worker-sync/tests/.env
+
+Add Cloudflare private key for TLS integration of domain hyperstore.cc:
+
+    terraform/server/eu-central-1/keys/cloudflare-hyperstore-private.pem
+
+Setup backend:
+
+    cd terraform/server/eu-central-1
+    terraform apply
+
+Start the clients:
+
+    cd terraform/client/eu
+    terraform apply
+
+Update tests and set OAuth credentials on clients:
+
+    cd worker-sync
+    php artisan app:sync-hyperstore-load-test-to-workers
+
+Start master + 11 workers:
+
+    php artisan app:start-master-and-workers
+ 
+Check if the run commands are active at https://eu-central-1.console.aws.amazon.com/systems-manager/run-command/executing-commands?region=eu-central-1. There should be four active commands for each region.
+
+Now forward master node to localhost:8089 to control the cluster:
+
+    aws ssm start-session --target INSTANCE-ID --document-name AWS-StartPortForwardingSession --parameters '{"portNumber":["8089" "localPortNumber":["8089"]}'
+
+And then open http://localhost:8089 in your browser to initialize the test with host https://hyperstore.cc. Make sure that 11 workers are connected.
+
+Find details for each step in sections below. 
+
 # Architecture
 
 Essentially the system design looks like this
@@ -244,7 +286,7 @@ Locust is pre-installed on the AMI-based VMs (EC2 Nano instance). Essentially th
     sudo pip3 install python-dotenv --break-system-packages
 
     # Get current benchmark file
-    wget https://raw.githubusercontent.com/janpetzold/hyperstore/refs/heads/main/terraform/client/locustfile.py -O /home/ubuntu/locustfile.py
+    wget https://raw.githubusercontent.com/janpetzold/hyperstore/refs/heads/main/worker-sync/tests/locustfile.py -O /home/ubuntu/locustfile.py
     
     # Then assign proper AMI role AmazonSSMManagedInstanceCore and restart service
     sudo systemctl restart snap.amazon-ssm-agent.amazon-ssm-agent.service
@@ -443,11 +485,13 @@ Simulating 1000 concurrent users from 11 workers with ECS task 1024 CPU / 2048 m
 
 This reached 100% CPU load, 7% memory load. Redis DB CPU was at 26% max.
 
+TODO: ECS 4096 CPU / 8192 memory
+
 ## Todos & Known issues
 
 ### Open issues
 
-[ ] Increase # of clients to 1000 parallel users (should be feasible with 10 workers)
+[ ] perform 1h test as baseline for cost calculations
 [ ] improve client.tf which is currently very repetitive
 [ ] Find/add artisan script to switch environments
 [ ] setup NAR based on EU
@@ -491,3 +535,4 @@ This reached 100% CPU load, 7% memory load. Redis DB CPU was at 26% max.
 [x] Fix 429 for /oauth/token
 [x] Enable opcache
 [x] Create artisan task to automatically provision the clients with the credentials and current load test file
+[x] Increase # of clients to 1000 parallel users (should be feasible with 10 workers)
