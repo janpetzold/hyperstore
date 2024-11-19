@@ -12,10 +12,15 @@ locals {
   env_vars = { for line in local.env_lines :
     split("=", line)[0] => join("=", slice(split("=", line), 1, length(split("=", line))))
   }
+
+  // Add the Passport RDS endpoint to the environment variables
+  updated_env_vars = merge(local.env_vars, {
+    DB_HOST = aws_db_instance.mysql_instance.endpoint
+  })
 }
 
 resource "aws_ssm_parameter" "env_parameters" {
-  for_each = local.env_vars
+  for_each = local.updated_env_vars
 
   name  = "${each.key}"
   type  = "SecureString"

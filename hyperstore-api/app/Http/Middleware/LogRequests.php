@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Support\Facades\Redis;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class LogRequests
 {
@@ -14,7 +15,7 @@ class LogRequests
             $redis = Redis::connection('requestlog');
             $redis->ping();
         } catch (\Exception $e) {
-            \Log::error("Redis connection failed: " . $e->getMessage());
+            Log::error("Redis connection failed: " . $e->getMessage());
             return $next($request);
         }
 
@@ -30,7 +31,7 @@ class LogRequests
 
         // Log the current count for this minute
         $count = $redis->get($key);
-        \Log::info("Request count for {$currentMinute}: {$count}");
+        Log::debug("Request count for {$currentMinute}: {$count}");
 
         return $next($request);
     }

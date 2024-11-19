@@ -132,8 +132,8 @@ resource "aws_ecs_task_definition" "hyperstore_task" {
   family                   = "hyperstore-fargate-task"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = "16384"
-  memory                   = "32768"
+  cpu                      = "8192"
+  memory                   = "16384"
 
   container_definitions = jsonencode([{
     name  = "hyperstore-app"
@@ -166,7 +166,7 @@ resource "aws_ecs_service" "hyperstore_service" {
   cluster         = aws_ecs_cluster.hyperstore_cluster.id
   task_definition = aws_ecs_task_definition.hyperstore_task.arn
   launch_type     = "FARGATE"
-  desired_count   = 1
+  desired_count   = 3
   enable_execute_command = true
 
   network_configuration {

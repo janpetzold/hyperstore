@@ -1,3 +1,5 @@
 .env
+.env.production
 *.sh
 phpunit.xml
+hyperstore-api/database/database.sqlite

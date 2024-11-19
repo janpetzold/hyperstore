@@ -21,7 +21,7 @@ class InventoryService
             $ping = Redis::connection()->ping();
             if ($ping === "pong" || $ping == 1) {
                 $redisHost = config('database.redis.inventory.host');
-                Log::info("Redis connection to host {$redisHost} successful");
+                Log::debug("Redis connection to host {$redisHost} successful");
             } else {
                 Log::error("Could not verify Redis connection");
             }

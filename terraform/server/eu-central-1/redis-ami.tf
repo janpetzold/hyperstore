@@ -10,11 +10,14 @@
 
 resource "aws_instance" "redis_instance" {
   ami           = "ami-0c68c16f694e0e248"
-  instance_type = "t2.micro"
+  instance_type = "t3.small"
   
   vpc_security_group_ids = [aws_security_group.redis_hyperstore_sg.id]
   subnet_id              = module.ecs_service.private_subnet_id
   private_ip = "10.0.1.12"
+
+  # Bastion SSH key shall also work for SSHing into Redis instance
+  key_name = aws_key_pair.generated_key.key_name
 
   tags = {
     Name = "RedisInstance"
@@ -31,7 +34,7 @@ resource "aws_security_group" "redis_hyperstore_sg" {
     from_port   = 6379
     to_port     = 6379
     protocol    = "tcp"
-    # Allow access from all machines in same subnet 
+    # Allow access from all machines in same VPC (essentially Bastion host and Fargate) 
     cidr_blocks = [module.ecs_service.vpc_cidr_block]
   }
 

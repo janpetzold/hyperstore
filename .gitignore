@@ -30,3 +30,4 @@ terraform/server/us-east-1/.terraform*
 terraform/server/us-east-1/terraform*
 terraform/server/sa-east-1/.terraform*
 terraform/server/sa-east-1/terraform*
+terraform/server/eu-central-1/bastion-key.ppk

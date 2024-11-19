@@ -151,9 +151,9 @@ The `Dockerfile`is prepared and an image can be created via
 
     docker build -t hyperstore .
 
-Run this through
+Afterwards run the image as container through
 
-    docker run -p 80:80 --network="host" --name hyperstore hyperstore
+    docker run -p 80:80 --network="host" --env-file .env --name hyperstore hyperstore
 
 The "host" parameter is needed in case you want to access the locally running Redis DB.
 
@@ -450,7 +450,42 @@ This will result in a client ID/secret combination. We don't really have test us
 
 To change stock just request a token using the "stock" scope, the default "read" scope won't suffice here.
 
-## Performance history
+## Passport database
+To support clustering / several nodes the Passport DB needs to be externalized, therefore AWS RDS (MySQL) is used. This should be reachable using the same Bastion host as Redis. From there just run basic statements via
+
+    mysql -h terraform-20241118201325363700000001.cbw046c8w86d.eu-central-1.rds.amazonaws.com -u passport -p
+    show databases;
+    use passportdb;
+    select* from oauth_clients;
+
+### Local setup
+
+    sudo apt install mysql-server
+    sudo mysql
+    SET GLOBAL validate_password.policy = 0;
+    
+    # Local user
+    CREATE USER 'passport'@'localhost' IDENTIFIED BY 'passport';
+    GRANT ALL PRIVILEGES ON passportdb.* TO 'passport'@'localhost';
+    
+    # To use this user also within docker localhost is not sufficient
+    CREATE USER 'passport'@'%' IDENTIFIED BY 'passport';
+    GRANT ALL PRIVILEGES ON passportdb.* TO 'passport'@'%';
+
+    FLUSH PRIVILEGES;
+    CREATE DATABASE passportdb;
+
+The PHP mysql extension needs to be enabled. On Linux do
+
+    sudo apt-get install php8.3-mysql
+
+On Windows it should be sufficient to un-comment this in `php.ini`
+
+    extension=pdo_sqlite
+
+    
+
+# Performance history
 Over time different changes were applied with an impact on E2E performance. This is summarized here. Baseline is always the `/api/hyper` get call to retrieve the current amount of hyper.
 
 | Action / Change | Environment | Response time |
@@ -464,34 +499,29 @@ Over time different changes were applied with an impact on E2E performance. This
 | Protect API via Access token | Fargate | 55ms |
 | Enable Opcache | Fargate | 50ms | 
 
-## Findings
+# Findings
 Rate limiting needs to be increased (default 60 requests/minute) even though we have multiple workers
 
 Lowest ECS instance ~$10/month (0.25 CPU, 0.5GB RAM) with good response times and no errors for 20 concurrent users, 22% errors for 100 concurrent users and very slow response times. CPU was the limiting factor all the time. Redis CPU load was barely measurable (2% max).
 
-Raising this to 3rd best option (1 CPU, 2GB RAM) increases costs to ~$40/month.
+Going up to 1000 concurrent users led to the following findings:
 
-Simulating 50 concurrent users on a worker node caused a max CPU load of ~20% on t3.nano.
+- Biggest performance factor is ECS, we ran 3 tasks with 8192 CPU each and achieved an average CPU load of ~35%. Memory was ~2%.
+- RDS CPU load for token generation was max. 20% with up to 50 concurrent connections (t3.small)
+- Redis CPU load was around 12% (t3.small)
+- Worker CPU load never exceeded 12% (t3.nano)
 
-Simulating 1000 concurrent users from 11 workers with ECS task 1024 CPU / 2048 memory led to the following results (10min execution time):
+For response times see this overview:
 
-| Type | Name | # reqs | # fails | Avg | Min | Max | Med | req/s | failures/s |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| GET | /api/hyper | 44861 | 3213 (7.16%) | 1260 | 16 | 3794 | 1100 | 74.76 | 5.35 |
-| POST | /api/hyper | 3437 | 260 (7.56%) | 1288 | 18 | 3518 | 1200 | 5.73 | 0.43 |
-| PUT | /api/hyper/own | 7303 | 496 (6.79%) | 1280 | 18 | 3766 | 1200 | 12.17 | 0.83 |
-| POST | /oauth/token | 7452 | 0 (0.00%) | 1290 | 27 | 4404 | 1200 | 12.42 | 0.00 |
-| Aggregated | | 63053 | 3969 (6.29%) | 1267 | 16 | 4404 | 1100 | 105.08 | 6.61 |
-
-This reached 100% CPU load, 7% memory load. Redis DB CPU was at 26% max.
-
-TODO: ECS 4096 CPU / 8192 memory
+TODO
 
 ## Todos & Known issues
 
 ### Open issues
 
+[ ] find out why code in Docker does not update
 [ ] perform 1h test as baseline for cost calculations
+[ ] Replace RDS with EC2 instance for IaC performance reasons (RDS takes ~5mins)
 [ ] improve client.tf which is currently very repetitive
 [ ] Find/add artisan script to switch environments
 [ ] setup NAR based on EU

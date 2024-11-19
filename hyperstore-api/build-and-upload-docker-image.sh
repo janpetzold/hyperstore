@@ -21,6 +21,9 @@ php artisan route:cache
 docker build -t hyperstore .
 docker tag hyperstore:latest 290562283841.dkr.ecr.eu-central-1.amazonaws.com/hyperstore-repo:latest
 
+# Run it
+# docker run -p 80:80 --network="host" --env-file .env --name hyperstore hyperstore
+
 # Upload to ECR
 aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin 290562283841.dkr.ecr.eu-central-1.amazonaws.com
 docker push 290562283841.dkr.ecr.eu-central-1.amazonaws.com/hyperstore-repo:latest
