@@ -154,6 +154,13 @@ resource "aws_ecs_task_definition" "hyperstore_task" {
           awslogs-stream-prefix= "hyperstore-logs"
       }
     }
+    ulimits = [
+      {
+        name      = "nofile"
+        softLimit = 65535
+        hardLimit = 65535
+      }
+    ]
   }])
 
   execution_role_arn = var.ecs_task_execution_role_arn
@@ -166,7 +173,7 @@ resource "aws_ecs_service" "hyperstore_service" {
   cluster         = aws_ecs_cluster.hyperstore_cluster.id
   task_definition = aws_ecs_task_definition.hyperstore_task.arn
   launch_type     = "FARGATE"
-  desired_count   = 3
+  desired_count   = 2
   enable_execute_command = true
 
   network_configuration {

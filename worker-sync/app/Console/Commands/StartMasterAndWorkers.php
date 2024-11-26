@@ -120,8 +120,10 @@ class StartMasterAndWorkers extends Command
                 'commands' => [
                     'cd /home/ubuntu',
                     'locust --master'
-                ]
-            ]
+                ],
+                'executionTimeout' => ['7200']  // 2 hours
+            ],
+            'TimeoutSeconds' => 7200  // 2 hours
         ]);
     }
 
@@ -139,8 +141,10 @@ class StartMasterAndWorkers extends Command
                 'commands' => [
                     'cd /home/ubuntu',
                     "locust --worker --master-host={$masterIp}"
-                ]
-            ]
+                ],
+                'executionTimeout' => ['7200']  // 2 hours
+            ],
+            'TimeoutSeconds' => 7200  // 2 hours
         ]);
     }
 }

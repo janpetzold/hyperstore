@@ -504,23 +504,30 @@ Rate limiting needs to be increased (default 60 requests/minute) even though we 
 
 Lowest ECS instance ~$10/month (0.25 CPU, 0.5GB RAM) with good response times and no errors for 20 concurrent users, 22% errors for 100 concurrent users and very slow response times. CPU was the limiting factor all the time. Redis CPU load was barely measurable (2% max).
 
-Going up to 1000 concurrent users led to the following findings:
+Going up to 1000 concurrent users and running this for 1 hour led to the following findings:
 
-- Biggest performance factor is ECS, we ran 3 tasks with 8192 CPU each and achieved an average CPU load of ~35%. Memory was ~2%.
-- RDS CPU load for token generation was max. 20% with up to 50 concurrent connections (t3.small)
-- Redis CPU load was around 12% (t3.small)
+- total number of requests registered at Cloudflare was ~2.15M, 2 GB data served
+- AWS costs were around $3.50 (ECS $2.8, Traffic $0.25, Redis DB $0.16, VPC $0.12, Load Balancer $0.08, RDS MySQL $0.07)
+- There was an issue leading to Redis connection drops using `phpredis`. Thus did not occur with a lower number of parallel users but it happened reproducibly with 1000 concurrent users. It was fixed without further changes by switching to `predis` (which is actually not recommended). This stabilized the system.
+- Biggest performance factor is ECS, I ran 2 tasks with 8192 CPU each and achieved an average CPU load of 30%. Memory was ~1% so RAM-wise the application is a joke.
+- RDS CPU load for token generation was max. 26% with up to 65 concurrent connections (t3.small)
+- Redis CPU load was around 15% (t3.small)
 - Worker CPU load never exceeded 12% (t3.nano)
+- request rate was pretty constant around 600 requests/second
 
 For response times see this overview:
 
-TODO
+
 
 ## Todos & Known issues
 
 ### Open issues
 
-[ ] find out why code in Docker does not update
+[ ] Redis: Use pconnect instead of connect (https://www.alibabacloud.com/help/en/redis/support/what-do-i-do-if-the-cannot-assign-requested-address-error-is-returned-when-i-access-apsaradb-for-redis-over-short-lived-connections)
+[ ] Replace frankenphp
+[ ] Evaluate whether JIT (Just-In-Time) compilation brings performance benefits
 [ ] perform 1h test as baseline for cost calculations
+[ ] Switch backend from Fargate to ECS on EC2 to address high CPU but low memory demands
 [ ] Replace RDS with EC2 instance for IaC performance reasons (RDS takes ~5mins)
 [ ] improve client.tf which is currently very repetitive
 [ ] Find/add artisan script to switch environments

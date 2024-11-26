@@ -1,0 +1,16 @@
+{
+    # Global options
+    admin off
+    auto_https off
+    
+    frankenphp {
+        # Worker configuration
+        worker_processes 8
+        worker_shutdown_timeout 20s
+        
+        # Connection handling
+        tcp_nodelay on
+        keepalive_timeout 75s
+        keepalive_requests 1000
+    }
+}

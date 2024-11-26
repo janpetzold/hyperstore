@@ -19,7 +19,8 @@ class InventoryService
     {
         try {
             $ping = Redis::connection()->ping();
-            if ($ping === "pong" || $ping == 1) {
+            // Predis returns a Status object, phpredis returns "PONG" or 1
+            if ($ping == "PONG" || $ping == "pong" || $ping == 1 || (is_object($ping) && method_exists($ping, 'getPayload') && $ping->getPayload() === 'PONG')) {
                 $redisHost = config('database.redis.inventory.host');
                 Log::debug("Redis connection to host {$redisHost} successful");
             } else {

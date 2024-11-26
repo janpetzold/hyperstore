@@ -10,7 +10,12 @@
 
 resource "aws_instance" "redis_instance" {
   ami           = "ami-0c68c16f694e0e248"
-  instance_type = "t3.small"
+  instance_type = "t3.medium"
+
+  # Better I/O performance
+  root_block_device {
+    volume_type = "gp3"
+  }
   
   vpc_security_group_ids = [aws_security_group.redis_hyperstore_sg.id]
   subnet_id              = module.ecs_service.private_subnet_id
